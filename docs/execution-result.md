@@ -81,3 +81,12 @@ values are insufficient_data instead. This contract validates metadata and shape
 A supplied zero baseline also rejects a non-null percentage. Numeric result
 strings are parsed as finite decimals for lossless JSON round trips. Other
 formula evaluation and linkage to request/evidence remain executor duties.
+
+## Milestone 3C implementation
+
+The model remains unchanged. `backend.query.QueryExecution` wraps ExecutionResult
+with the original revalidated plan scope, row limits/truncation, technical warnings,
+lookup record provenance and comparison-period coverage. This additive wrapper
+addresses execution metadata absent from the original result envelope without
+changing its allowlists or outcome rules. See [query-execution.md](query-execution.md)
+for supported mappings, NULL handling, ratio precision and unsupported semantics.

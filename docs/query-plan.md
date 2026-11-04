@@ -180,3 +180,11 @@ delivery_completion are separate dimensions. The latter accepts normalized
 fully_delivered, partially_delivered, not_delivered labels. Legacy broker_code,
 fulfillment, and old fulfillment labels are rejected as semantic corrections;
 see [migration details](semantic-contract.md#corrections-and-compatibility).
+
+## Milestone 3C execution support
+
+The plan schema and versions are unchanged. The separate deterministic compiler
+and read-only executor support the verified subset described in
+[query-execution.md](query-execution.md). Accepted plan shapes with unverified FX,
+product normalization, unmapped unit projections or unsupported numeric precision
+produce typed unsupported outcomes; validation never implies a guessed mapping.

@@ -8,7 +8,7 @@
 - Keep secrets, environment files, databases, and source datasets out of Git and images.
 - Do not invent transactions or the final dataset schema.
 - Future analytics must use DuckDB in read-only mode against the fixed supplied dataset.
-- Groq, frontend, query engine, and Azure work require a later milestone.
+- Groq, frontend, and Azure work require a later milestone.
 - Do not change branches or remotes, commit, or push unless explicitly requested.
 - Keep query plans versioned and logical; Groq must never produce executable SQL.
 - Update semantic-contract/query-plan docs and validation tests when changing semantics.
@@ -20,3 +20,5 @@
 - Run ingestion only through the offline builder; API startup/requests must never ingest.
 - Publish database snapshots only after manifest/source reconciliation and integrity checks pass.
 - Preserve raw values and provenance; unverified business rules must remain explicit gaps.
+- Compile and execute only revalidated QueryPlan objects; never accept user/LLM SQL.
+- Keep compiler identifiers/joins allowlisted, values bound, and unverified semantics typed unsupported.
