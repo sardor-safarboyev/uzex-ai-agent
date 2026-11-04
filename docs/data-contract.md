@@ -16,3 +16,9 @@ and query behavior using those verified definitions.
 Future analytics must open DuckDB in read-only mode. Keep original source data
 immutable and outside version control and container images. The health endpoint
 must remain independent of database availability and Groq credentials.
+
+Milestone 2 records provisional README/screenshot knowledge and defines logical
+metrics, dimensions, currency/unit policies, and delivery-completion semantics in
+[semantic-contract.md](semantic-contract.md). These are not validated CSV mappings
+or a final physical schema. The versioned [query plan](query-plan.md) validates
+requests without importing or executing against any dataset.
