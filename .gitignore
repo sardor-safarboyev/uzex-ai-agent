@@ -34,3 +34,8 @@ dist/
 build/
 .coverage
 htmlcov/
+
+
+/data/raw/
+/data/processed/
+/data/reports/
