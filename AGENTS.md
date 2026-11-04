@@ -10,3 +10,10 @@
 - Future analytics must use DuckDB in read-only mode against the fixed supplied dataset.
 - Groq, frontend, query engine, and Azure work require a later milestone.
 - Do not change branches or remotes, commit, or push unless explicitly requested.
+- Keep query plans versioned and logical; Groq must never produce executable SQL.
+- Update semantic-contract/query-plan docs and validation tests when changing semantics.
+- Preserve explicit currency/unit policies and source/normalized value separation.
+- Treat dataset README/screenshots as provisional until verified against supplied files.
+- Keep broker roles explicit; delivery completion never establishes payment completion.
+- Require verified mappings for normalized product IDs and kg/tonne conversion.
+- Keep no_match distinct from insufficient_data in execution-result contracts.
