@@ -19,6 +19,20 @@ read-only DuckDB analytics over the supplied fixed 500,000-transaction synthetic
 dataset, a React/Vite frontend, and Azure deployment. None is implemented or
 required for startup in Milestone 1.
 
+Milestone 2 adds `backend.semantic`: a versioned Pydantic query-plan contract and
+an immutable semantic metric registry. Plans distinguish aggregate requests from
+clarification and unsupported outcomes. Logical identifiers remain independent
+of physical columns. Cross-field validation enforces currency/unit compatibility.
+There is no execution path; successful validation does not establish dataset
+mapping readiness. See [semantic contract](semantic-contract.md) and
+[query plan](query-plan.md). Groq interpretation and deterministic compilation
+remain future work; Groq must never generate executable SQL.
+
+Milestone 2.1 refines the same semantic package with version 1.1 lookup and period
+comparison requests, numeric predicates, normalized product identity, mass-unit
+policies, explicit broker roles and delivery completion, and a future typed
+execution-result envelope. No executor, SQL compiler, or data mappings are added.
+See [execution result](execution-result.md) for outcome and coverage semantics.
 
 ## Milestone 3A database boundary
 
@@ -52,5 +66,5 @@ mounts an existing directory read-only at /data without auto-creating host paths
 The non-root runtime user requires read/traverse permissions. The Docker liveness
 probe keeps running even while database readiness fails. Only temporary test
 fixtures contain invented data; no production schema, query compiler, or Groq
-integration is introduced. The absent semantic modules from Milestones 2–2.1 are
-not a runtime dependency of this layer.
+integration is introduced. The semantic modules from Milestones 2–2.1 coexist
+with this layer but are not a runtime dependency of database access.

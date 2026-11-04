@@ -17,6 +17,11 @@ Future analytics must open DuckDB in read-only mode. Keep original source data
 immutable and outside version control and container images. The health endpoint
 must remain independent of database availability and Groq credentials.
 
+Milestone 2 records provisional README/screenshot knowledge and defines logical
+metrics, dimensions, currency/unit policies, and delivery-completion semantics in
+[semantic-contract.md](semantic-contract.md). These are not validated CSV mappings
+or a final physical schema. The versioned [query plan](query-plan.md) validates
+requests without importing or executing against any dataset.
 
 ## Milestone 3A: physical catalog inspection
 
@@ -41,5 +46,5 @@ Automated fixtures create temporary databases with invented test-only objects an
 rows, never real or representative UZEX transactions. A later supplied snapshot
 still requires documented provenance, schema validation, row counts and verified
 logical mappings before semantic query execution is possible. The semantic
-models/registry from earlier milestones were absent in this checkout; database
-access has no dependency on them and does not reconstruct their schema.
+models and registry define logical contracts independently of database access;
+catalog inspection does not establish their physical mappings.
