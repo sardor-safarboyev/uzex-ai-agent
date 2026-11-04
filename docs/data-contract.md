@@ -127,3 +127,30 @@ profiler-code fingerprints, and include bounded source-value examples (100 value
 dictionaries; Markdown displays only the top 15 source values per field. Profiles
 are local ignored artifacts, not a committed source manifest or public dataset.
 The small profiler tests use invented fixtures and make no UZEX result claims.
+
+## Milestone 3B.2: validated ingestion
+
+The offline builder now materializes the observed dataset using the mappings in
+[physical-schema.md](physical-schema.md), without changing the semantic vocabulary
+or source files. See the local [build report](../data/reports/build-validation.md)
+and [build JSON](../data/reports/build-validation.json) for artifact hashes, table
+schemas/counts, reconciliation checks and unresolved exceptions. Run independent
+read-only validation with `uv run --project backend python -m backend.ingestion validate`.
+
+A successful build validates immutable sources against the completed profiling
+manifest and requires 500,000 unique deal IDs. Raw field strings and original
+filename/logical-record references are retained alongside typed data. Every
+source field is reconciled, every typed mapping is checked, and exact identifier
+joins are checked individually and together for coverage and preserved deal grain.
+No records are silently discarded or deduplicated. Business disagreements remain
+explicit exceptions rather than overwritten source fields.
+
+USD amounts remain unconverted because FX precision/rounding and timezone rules
+are unresolved. The observed same-date positive rate and its source reference are
+retained separately from the NULL applied-rate field. Metre/square-metre labels
+remain source values outside the semantic unit allowlist. Blank payment/delivery
+fields remain NULL, and delivery completion does not establish payment completion.
+These limitations do not prevent a lossless source-backed snapshot; they do block
+unsupported converted/normalized analytical claims. No broker-INN participant
+mapping, fuzzy entity resolution, semantic compiler, or runtime ingestion route
+is added. Earlier no-import descriptions above refer to their original milestones.
