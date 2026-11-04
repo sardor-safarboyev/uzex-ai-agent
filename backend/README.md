@@ -1,6 +1,6 @@
 # UZEX backend
 
-FastAPI application package for Milestone 1. From this directory:
+FastAPI application package with optional read-only DuckDB inspection. From this directory:
 
 ```sh
 uv sync --locked

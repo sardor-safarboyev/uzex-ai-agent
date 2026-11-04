@@ -7,6 +7,13 @@ services:
       - "127.0.0.1:8000:8000"
     environment:
       UZEX_APP_NAME: "${UZEX_APP_NAME:-UZEX AI Agent}"
+      UZEX_DATABASE_PATH: "${UZEX_DATABASE_PATH:-/data/uzex.duckdb}"
+      UZEX_DATABASE_METADATA_ENABLED: "${UZEX_DATABASE_METADATA_ENABLED:-false}"
+      UZEX_DATABASE_THREADS: "${UZEX_DATABASE_THREADS:-2}"
+      UZEX_DATABASE_MEMORY_MB: "${UZEX_DATABASE_MEMORY_MB:-256}"
+      UZEX_DATABASE_MAX_CONNECTIONS: "${UZEX_DATABASE_MAX_CONNECTIONS:-2}"
+      UZEX_DATABASE_QUERY_TIMEOUT_MS: "${UZEX_DATABASE_QUERY_TIMEOUT_MS:-5000}"
+      UZEX_DATABASE_METADATA_MAX_COLUMNS: "${UZEX_DATABASE_METADATA_MAX_COLUMNS:-2000}"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
       interval: 10s
