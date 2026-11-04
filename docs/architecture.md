@@ -68,3 +68,20 @@ probe keeps running even while database readiness fails. Only temporary test
 fixtures contain invented data; no production schema, query compiler, or Groq
 integration is introduced. The semantic modules from Milestones 2–2.1 coexist
 with this layer but are not a runtime dependency of database access.
+
+## Offline profiling boundary (Milestone 3B.1)
+
+`backend.profiling` is a standalone CLI, with strict CSV/provenance checks,
+observed-header profiling recipes, transient DuckDB diagnostics, and JSON/Markdown
+report rendering. It is not imported by the FastAPI app, uses no runtime database
+path, and does not call the read-only runtime adapter: it intentionally builds
+in-memory VARCHAR tables to analyze local source files. No persistent database,
+production import, semantic compilation, normalization service or LLM integration
+is added. The existing runtime database and semantic models are preserved.
+
+Reports record hashes before/after profiling, versions, deterministic counts,
+parsing failures and join/cardinality/rate-coverage evidence. Structurally invalid
+sources fail closed for downstream diagnostics. Quality warnings remain visible
+without changing source rows. Candidate relationships and unsafe joins are
+explicit diagnostics rather than physical schema commitments. The existing
+.gitignore excludes raw sources, processed data, and local reports.
