@@ -1,0 +1,10 @@
+# Optional overlay; the base Compose file starts without a database or volume.
+services:
+  backend:
+    volumes:
+      - type: bind
+        source: "${UZEX_DATABASE_DIRECTORY:?Set UZEX_DATABASE_DIRECTORY to an existing database directory}"
+        target: /data
+        read_only: true
+        bind:
+          create_host_path: false
