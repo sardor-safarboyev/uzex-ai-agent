@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     app_name: str = "UZEX AI Agent"
     database_path: Path | None = None
     database_metadata_enabled: bool = False
+    query_max_results: int = Field(default=1000, ge=1, le=1000)
     database_threads: int = Field(default=2, ge=1, le=8)
     database_memory_mb: int = Field(default=256, ge=16, le=8192)
     database_max_connections: int = Field(default=2, ge=1, le=8)

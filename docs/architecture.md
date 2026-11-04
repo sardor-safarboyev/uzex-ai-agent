@@ -101,3 +101,19 @@ CSV reads solely for source reconciliation. No SQL compiler or LLM interpretatio
 is introduced. Unverified FX, unit/identity and duration semantics remain explicit
 rather than being guessed. The [physical schema](physical-schema.md) documents
 all observed headers, typed fields, derived values, provenance and semantic gaps.
+
+## Deterministic query boundary (Milestone 3C)
+
+`backend.query` revalidates QueryPlan objects, compiles closed allowlisted
+SELECT/WITH templates with bound values, verifies the ingestion boundary, and
+executes through the existing DuckDBAdapter. Exact primary-key joins preserve
+fact grain. Scope/metric/predicate coverage checks precede bounded result queries.
+Typed results keep insufficient evidence distinct from no_match, and carry scope,
+source evidence, provenance and limit warnings through an additive wrapper.
+
+FX and unverified entity normalization remain unsupported. Exact unit multipliers
+and rational price comparisons avoid floating-point conversion/ranking errors.
+The package exposes a Python service and local plan-file CLI, with no arbitrary
+SQL input or new HTTP query route. Runtime API/database access remains read-only;
+no ingestion, LLM calls or natural-language generation is introduced. See
+[execution support](query-execution.md) for precise semantics and limits.
