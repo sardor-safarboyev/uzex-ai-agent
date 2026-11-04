@@ -1,0 +1,10 @@
+**
+!backend/
+!backend/Dockerfile
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/README.md
+!backend/src/
+!backend/src/**
+**/__pycache__/
+**/*.py[cod]

@@ -28,3 +28,9 @@ dist/
 
 # OS
 .DS_Store
+
+# Python packaging and coverage
+*.egg-info/
+build/
+.coverage
+htmlcov/
