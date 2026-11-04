@@ -1,7 +1,8 @@
 # Semantic contract 1.1
 
-This is a logical vocabulary, not a physical database schema. No CSVs have been
-inspected. Names below must be mapped and validated before execution is possible.
+This is a logical vocabulary. Profiled CSV headers and the validated ingestion
+snapshot now have explicit [physical mappings](physical-schema.md). Unsupported
+normalization and conversion semantics still require approval before execution.
 The code registry is `backend.semantic.registry.METRICS`; the validated envelope
 is `backend.semantic.QueryPlan`. Neither generates SQL nor executes a query.
 
@@ -11,8 +12,10 @@ User-supplied README/screenshot knowledge reports deals_2022.csv through
 deals_2026.csv with 500,000 synthetic transactions total; contracts.csv with
 approximately 6,616 contracts; participants.csv with approximately 14,392
 participants; brokers.csv with approximately 120 brokers; and usd_rates.csv
-with daily USD/UZS rates. These counts, relationships, field meanings and formulas
-are provisional until checked against supplied records. No results are invented.
+with daily USD/UZS rates. Milestones 3B.1–3B.2 verified row counts, identifiers,
+exact-key coverage and date-rate availability for the recorded source hashes.
+Business meanings beyond the documented ingestion mappings remain unresolved.
+No results are invented.
 
 ## Metrics
 
@@ -68,7 +71,8 @@ Monetary metrics require a money policy. `source` with source_currency restricts
 the transaction population to UZS or USD; without it, group_by must include
 currency and produces separate totals. `convert_to_uzs` retains UZS amounts and
 converts each USD transaction using its transaction-date USD/UZS rate before
-aggregation. Currency comes from the contract, pending validation. Conversion
+aggregation. Ingestion retains contract currency through the validated unique
+contract-number join, but does not perform USD conversion. Conversion
 requires the additional logical fields deal_date and usd_uzs_rate, a verified
 date/time convention, unique rates, and defined precision/rounding rules.
 Missing rates must block affected answers or be disclosed as incomplete coverage;
@@ -168,3 +172,14 @@ clarify), and replace fulfillment with delivery_completion. Old fully_fulfilled,
 partially_fulfilled, unfulfilled labels become fully_delivered,
 partially_delivered, not_delivered. They describe delivery quantities only and
 never payment completion. No automatic broker-role migration is safe.
+
+
+## Ingestion boundary (Milestone 3B.2)
+
+The QueryPlan contract stays at versions 1.0/1.1. The separate ingestion schema
+version 1.0 maps observed columns into raw audit and typed tables; it does not
+add a semantic compiler or execute plans. See [physical-schema.md](physical-schema.md)
+for every field mapping, source provenance and unresolved product/region/unit/FX
+semantics. USD rate candidates are retained, but applied rates and converted USD
+amounts remain NULL. Starting price remains separate from executed unit price,
+and blank delivered quantities do not become zero or payment completion.

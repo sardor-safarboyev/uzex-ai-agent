@@ -85,3 +85,19 @@ sources fail closed for downstream diagnostics. Quality warnings remain visible
 without changing source rows. Candidate relationships and unsafe joins are
 explicit diagnostics rather than physical schema commitments. The existing
 .gitignore excludes raw sources, processed data, and local reports.
+
+## Offline ingestion boundary (Milestone 3B.2)
+
+`backend.ingestion` is separate from both FastAPI and the profiling command. It
+pins the profile manifest, verifies immutable source hashes, creates a temporary
+transactional DuckDB snapshot, retains exact strings in raw tables, and materializes
+explicit typed mappings in main tables. Source provenance, build identity and
+validation evidence live in audit tables. It reopens the closed snapshot read-only
+for independent reconciliation before atomic publication under data/processed/.
+
+The runtime adapter and API remain read-only and never import/invoke ingestion.
+The independent offline validator also opens the database read-only, but permits
+CSV reads solely for source reconciliation. No SQL compiler or LLM interpretation
+is introduced. Unverified FX, unit/identity and duration semantics remain explicit
+rather than being guessed. The [physical schema](physical-schema.md) documents
+all observed headers, typed fields, derived values, provenance and semantic gaps.

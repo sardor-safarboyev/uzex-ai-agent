@@ -17,3 +17,6 @@
 - Keep broker roles explicit; delivery completion never establishes payment completion.
 - Require verified mappings for normalized product IDs and kg/tonne conversion.
 - Keep no_match distinct from insufficient_data in execution-result contracts.
+- Run ingestion only through the offline builder; API startup/requests must never ingest.
+- Publish database snapshots only after manifest/source reconciliation and integrity checks pass.
+- Preserve raw values and provenance; unverified business rules must remain explicit gaps.
