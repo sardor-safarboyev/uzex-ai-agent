@@ -1,0 +1,30 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Database and source data
+*.duckdb
+*.duckdb.wal
+*.db
+data/raw/
+data/processed/
+*.parquet
+
+# Node
+node_modules/
+dist/
+
+# Editors
+.vscode/
+.idea/
+
+# OS
+.DS_Store
