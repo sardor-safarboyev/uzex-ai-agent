@@ -87,6 +87,14 @@ try {
  check(document.querySelector('.answer').textContent.includes('14 856'),'Region summary uses actual result');
  check(document.querySelector('.answer').textContent.includes('Toshkent shahri'),'Source proper name retained');
  check(!document.querySelector('.result-card').textContent.includes('So‘rovni toraytiring'),'No misleading top-1 truncation');
+ payload={...initial,execution:{...initial.execution,warnings:['Currency/unit policy excluded 1327 source rows.','The result limit was reduced to the configured server maximum.'],scope:{request:{kind:'comparison',baseline:{start:'2024-01-01',end:'2024-12-31'},target:{start:'2025-01-01',end:'2025-12-31'},aggregate:{metrics:['deal_count']}}},result:{...initial.execution.result,outcome:{status:'answered',data:{columns:[{field:'baseline',metric:'deal_count',unit:'transactions'},{field:'target',metric:'deal_count',unit:'transactions'},{field:'absolute_difference',metric:'deal_count',unit:'transactions'}],rows:[[105320,114396,9076]]}}}}};await ask();
+ const headings=[...document.querySelectorAll('.result-card> .table-wrap th')];
+ check(headings[0].textContent==='2024-yil'&&headings[1].textContent==='2025-yil','Actual comparison year headers');
+ check(headings.every(heading=>!heading.textContent.includes('ta bitim')),'Comparison units are not repeated');
+ const notes=document.getElementById('evidence-details');
+ check(notes.textContent.includes('1 327'),'Routine policy note retained in evidence');
+ check(![...document.querySelectorAll('.result-card>.notice')].some(note=>note.textContent.includes('1 327')),'Routine note absent from main result');
+ check([...document.querySelectorAll('.result-card>.notice')].some(note=>note.textContent.includes('serverda')),'Important server limit remains prominent');
  language('ru');await delay();
  language('auto');await delay();
  payload={...initial,language:'ru'};await ask();

@@ -129,6 +129,33 @@ export function columnUnit(column, lang, value = null) {
   const price = ['average_unit_price','executed_unit_price'].includes(column.metric || column.field);
   return [currency,unit].filter(Boolean).join(price ? ' / ' : ' ');
 }
+export function columnHeader(column, execution, lang) {
+  if (['baseline','target'].includes(column.field)) {
+    const request = execution?.scope?.request;
+    const period = request?.kind === 'comparison' ? request[column.field] : execution?.periods?.find(item => item.role === column.field)?.date_range;
+    if (period?.start && period?.end) {
+      const year = period.start.slice(0,4);
+      if (period.start === `${year}-01-01` && period.end === `${year}-12-31`) return lang === 'uz' ? `${year}-yil` : `${year} год`;
+      return `${period.start} – ${period.end}`;
+    }
+  }
+  return title(column.field,lang);
+}
+export function columnHeaderUnit(column, lang) {
+  if (['baseline','target','absolute_difference'].includes(column.field) && column.unit === 'transactions') return '';
+  return columnUnit(column,lang);
+}
+export function partitionWarnings(warnings = []) {
+  const routine = [], important = [];
+  const notes = new Set([
+    'Ratios use Decimal precision 38, ROUND_HALF_EVEN; no FX conversion is performed.',
+    'Text predicates use SQL NULL semantics; NULL values do not match eq/ne/in/not_in.',
+  ]);
+  for (const warning of warnings) {
+    (notes.has(warning) || /^Currency\/unit policy excluded \d+ source rows\.$/.test(warning) ? routine : important).push(warning);
+  }
+  return {routine,important};
+}
 const numeric = new Set(['deal_count','deal_value','physical_volume','delivered_lots','average_unit_price','deal_quantity_lots','transaction_amount','executed_unit_price','lot_size','baseline','target','absolute_difference','percentage_change']);
 export function formatCell(value, column, lang) {
   if (value === null || value === undefined) return '—';
