@@ -16,6 +16,8 @@ log() { echo "$(date -u +%FT%TZ) $*"; }
 ensure_caddy_sites() {
   # Our two domains live in the shared Caddy (it owns :80/:443 and issues certificates).
   # Re-add the block only if it disappeared; never edit anything else in that file.
+  # Opt-in: only when /opt/uzex/.manage-caddy exists (the Caddyfile belongs to another stack).
+  [ -f "$APP/.manage-caddy" ] || return 0
   [ -f "$CADDYFILE" ] || return 0
   grep -q "vitality-api.comma.uz" "$CADDYFILE" && return 0
   log "UZEX block missing from Caddyfile: re-adding"
