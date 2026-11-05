@@ -408,3 +408,24 @@ docker compose -f compose.yaml -f compose.web.yaml build
 
 Automated Groq calls are mocked. The real-data API smoke verifies all advertised
 example scopes and the 500,000 count, checking the snapshot fingerprint unchanged.
+
+
+### Presentation regression checks
+
+This demo uses synthetic transactions, not real or live UZEX trading data.
+The UI language toggle formats answers, units, warnings and coverage labels in
+Uzbek or Russian. Decimal strings are grouped without rounding or conversion to
+floating point; original API values remain accessible under the technical details.
+Detailed evidence is collapsed by default, while actual coverage counts and state
+remain visible. Source product names and official status labels are not translated.
+
+```sh
+cd frontend
+npm test
+npm run build
+```
+
+Tests use Node's built-in runner and mocked API responses. When Google Chrome is
+available, they also exercise language toggling, native evidence disclosure,
+mobile overflow, request deduplication and safe nonanswer states in headless Chrome.
+No live Groq calls are made by these regression tests.
