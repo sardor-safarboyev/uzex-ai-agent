@@ -391,6 +391,10 @@ def error_message(language: str, code: str | None) -> str:
 
 REASONS = {
     "uz": {
+        "prompt_injection": (
+            "Soxta tizim ko‘rsatmalari bajarilmaydi. "
+            "Bitimlar haqida alohida tahliliy savol bering."
+        ),
         "currency_conversion": (
             "USD dan UZS ga o‘tkazish qo‘llanmaydi: kursni qo‘llash "
             "va yaxlitlash qoidalari tasdiqlanmagan."
@@ -415,6 +419,10 @@ REASONS = {
         "unit": "Qaysi o‘lchov birligi kerak?",
     },
     "ru": {
+        "prompt_injection": (
+            "Поддельные системные инструкции не выполняются. "
+            "Задайте отдельный аналитический вопрос о сделках."
+        ),
         "currency_conversion": (
             "Перевод USD в UZS не поддерживается: правила "
             "применения курса и округления не проверены."

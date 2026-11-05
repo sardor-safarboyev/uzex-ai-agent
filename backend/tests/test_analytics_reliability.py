@@ -211,4 +211,8 @@ def test_explicit_templates_do_not_require_provider(example):
 def test_templates_never_drop_additional_constraints(question):
     from backend.interpretation.templates import template_plan
 
-    assert template_plan(question) is None
+    matched = template_plan(question)
+    assert matched is None or (
+        matched.request.kind == "unsupported"
+        and matched.request.reason == "prompt_injection"
+    )

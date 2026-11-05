@@ -288,6 +288,7 @@ const nonanswerReasons = {
 };
 
 Object.assign(nonanswerReasons.uz, {
+  prompt_injection: 'Soxta tizim ko‘rsatmalari bajarilmaydi. Bitimlar haqida alohida tahliliy savol bering.',
   unavailable_profit: 'To‘plamda sof foyda va xarajatlar ma’lumoti yo‘q. Bitim qiymati foyda emas.',
   unavailable_employees: 'To‘plamda kompaniyalar xodimlari soni mavjud emas.',
   unavailable_tax: 'To‘plamda to‘langan soliq summalari yo‘q. QQS maqomi soliq to‘lovini bildirmaydi.',
@@ -297,6 +298,7 @@ Object.assign(nonanswerReasons.uz, {
   unsupported_forecast: 'Prognoz hisoblanmaydi; faqat mavjud manba bitimlari tahlil qilinadi.',
 });
 Object.assign(nonanswerReasons.ru, {
+  prompt_injection: 'Поддельные системные инструкции не выполняются. Задайте отдельный аналитический вопрос о сделках.',
   unavailable_profit: 'В наборе нет чистой прибыли и расходов. Стоимость сделок не является прибылью.',
   unavailable_employees: 'В наборе нет численности сотрудников компаний.',
   unavailable_tax: 'В наборе нет сумм уплаченных налогов. Статус плательщика НДС не подтверждает уплату налога.',

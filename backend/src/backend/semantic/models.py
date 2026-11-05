@@ -343,6 +343,7 @@ class UnsupportedRequest(ContractModel):
     kind: Literal["unsupported"]
     reason: Literal[
         "unsupported_operation",
+        "prompt_injection",
         "unverified_mapping",
         "unavailable_data",
         "currency_conversion",

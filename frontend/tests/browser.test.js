@@ -12,7 +12,7 @@ const chrome = process.env.CHROME_BIN || 'google-chrome';
 const available = spawnSync(chrome,['--version'],{encoding:'utf8'}).status === 0;
 const harness = String.raw`<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><output id="test-status">pending</output><script type="module">
 const payload={language:'uz',status:'answered',answer:'',execution:{returned_rows:1,warnings:[],provenance:[{row:1,source_file:'deals_2024.csv',source_record:123}],scope:{request:{kind:'aggregate',metrics:['deal_count']}},result:{coverage:{state:'complete',matched_rows:500000,evaluated_rows:500000,issues:[]},evidence:[{source_id:'deals_2024.csv',dataset_version:'abc',logical_fields:['deal_count'],mapping_verified:true}],outcome:{status:'answered',data:{columns:[{field:'deal_count',unit:'transactions'}],rows:[[500000]]}}}}};
-window.fetch=async url=>new Response(JSON.stringify(String(url).endsWith('/api/examples')?[{id:'count',uz:'Bitimlar soni qancha?',ru:'Сколько всего сделок?'}]:payload),{status:200});
+let calls=0;window.fetch=async url=>{if(String(url).endsWith('/api/ask'))calls++;return new Response(JSON.stringify(String(url).endsWith('/api/examples')?[{id:'count',uz:'Bitimlar soni qancha?',ru:'Сколько всего сделок?'}]:payload),{status:200});};
 localStorage.removeItem('uzex.chats.v1');
 await import('/src/main.jsx');
 const delay=()=>new Promise(resolve=>setTimeout(resolve,20));
@@ -21,9 +21,14 @@ function check(value,message){if(!value)throw Error(message);}
 try{
  await wait(()=>document.querySelector('.examples button'));
  check(document.querySelector('.disclaimer').textContent.includes('sintetik'),'Disclaimer retained');
- document.querySelector('.examples button').click();await delay();document.querySelector('form').requestSubmit();
+ document.querySelector('.examples button').click();await delay();
+ const input=document.querySelector('textarea');
+ const shifted=new KeyboardEvent('keydown',{key:'Enter',shiftKey:true,bubbles:true,cancelable:true});input.dispatchEvent(shifted);
+ check(!shifted.defaultPrevented&&calls===0,'Shift Enter preserves newline behavior');
+ input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+ input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
  await wait(()=>document.querySelector('.assistant-message'));
- check(document.querySelector('.user-message').textContent.includes('Bitimlar'),'User question rendered');
+ check(document.querySelector('.user-message').textContent.includes('Bitimlar'),'User question rendered');check(calls===1,'Enter uses the guarded submit path');check(!document.querySelector('.composer-footer').textContent.includes('mustaqil'),'No redundant footer text');
  check(document.querySelector('.answer').textContent.includes('500 000'),'Verified result retained');
  check(document.querySelector('table'),'Answer table retained');
  const evidence=document.querySelector('details');evidence.open=true;
