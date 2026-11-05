@@ -7,6 +7,8 @@ services:
       - "127.0.0.1:8000:8000"
     environment:
       UZEX_APP_NAME: "${UZEX_APP_NAME:-UZEX AI Agent}"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-nvidia/nemotron-3.5-lightning:free}"
       UZEX_DATABASE_PATH: "${UZEX_DATABASE_PATH:-/data/uzex.duckdb}"
       UZEX_DATABASE_METADATA_ENABLED: "${UZEX_DATABASE_METADATA_ENABLED:-false}"
       UZEX_DATABASE_THREADS: "${UZEX_DATABASE_THREADS:-2}"
