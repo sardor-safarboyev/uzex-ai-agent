@@ -3,12 +3,20 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="UZEX_")
+
+    groq_api_key: SecretStr | None = Field(
+        default=None, validation_alias="GROQ_API_KEY"
+    )
+    groq_model: str = "openai/gpt-oss-20b"
+    groq_timeout_seconds: float = Field(default=20, gt=0, le=120)
+    groq_max_retries: int = Field(default=2, ge=0, le=3)
+    groq_structured_output: bool = False
 
     app_name: str = "UZEX AI Agent"
     database_path: Path | None = None
