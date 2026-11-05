@@ -20,6 +20,33 @@ def template_plan(question: str) -> QueryPlan | None:
     def clarify(reason, message):
         return {"kind": "clarification", "reason": reason, "question": message}
 
+    yearly = re.fullmatch(
+        r"((?:19|20)\d{2})\s*[-–—]\s*((?:19|20)\d{2})-yillarda "
+        r"bitimlar sonining yillik o'sish yoki kamayish foizlarini hisobla",
+        text,
+    )
+    if yearly:
+        first, last = map(int, yearly.groups())
+        if last == first + 1:
+            request = {
+                "kind": "comparison",
+                "baseline": period(first),
+                "target": period(last),
+                "aggregate": aggregate(),
+                "changes": ["percentage_change"],
+            }
+        else:
+            request = {
+                "kind": "unsupported",
+                "reason": "unsupported_yearly_series",
+                "explanation": (
+                    "Only a single two-period percentage comparison is supported."
+                ),
+            }
+        return QueryPlan.model_validate(
+            {"version": "1.1", "language": language, "request": request}
+        )
+
     limitations = [
         (
             r"(?:19|20)\d{2}-yilda kompaniyalarning sof foydasi qancha",

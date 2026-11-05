@@ -260,6 +260,7 @@ Object.assign(nonanswerReasons.uz, {
   unavailable_tax: 'To‘plamda to‘langan soliq summalari yo‘q. QQS maqomi soliq to‘lovini bildirmaydi.',
   unsupported_causality: 'To‘plam yetakchilik sabablarini aniqlashga imkon bermaydi. Reyting uchun bitimlar soni yoki jismoniy hajmni tanlang.',
   unsupported_statistic: 'Mediana tasdiqlangan hisoblash amallari orasida yo‘q.',
+  unsupported_yearly_series: 'Bir nechta yil uchun ketma-ket yillik foizlar qatori qo‘llanmaydi. Ikki qo‘shni yilni ko‘rsating, masalan: 2024–2025-yillarda bitimlar sonining yillik o‘sish yoki kamayish foizlarini hisobla.',
   unsupported_forecast: 'Prognoz hisoblanmaydi; faqat mavjud manba bitimlari tahlil qilinadi.',
 });
 Object.assign(nonanswerReasons.ru, {
@@ -268,5 +269,6 @@ Object.assign(nonanswerReasons.ru, {
   unavailable_tax: 'В наборе нет сумм уплаченных налогов. Статус плательщика НДС не подтверждает уплату налога.',
   unsupported_causality: 'Набор не позволяет установить причины лидерства. Для рейтинга выберите количество сделок или физический объём.',
   unsupported_statistic: 'Медиана не входит в проверенные операции расчёта.',
+  unsupported_yearly_series: 'Последовательный ряд годовых процентных изменений не поддерживается. Можно сравнить два соседних года, например 2024 и 2025.',
   unsupported_forecast: 'Прогнозирование не поддерживается; анализируются только имеющиеся сделки.',
 });

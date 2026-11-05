@@ -353,6 +353,7 @@ class UnsupportedRequest(ContractModel):
         "unavailable_tax",
         "unsupported_causality",
         "unsupported_statistic",
+        "unsupported_yearly_series",
         "unsupported_forecast",
     ]
     explanation: Text
