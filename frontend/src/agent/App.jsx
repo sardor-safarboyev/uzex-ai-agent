@@ -139,6 +139,12 @@ export default function App() {
   }, [messages]);
   useEffect(() => {
     fetch(`${API}/api/agent/examples`).then((r) => (r.ok ? r.json() : [])).then(setExamples).catch(() => {});
+    // shareable links: /?q=question
+    const shared = new URLSearchParams(window.location.search).get('q');
+    if (shared) {
+      window.history.replaceState(null, '', window.location.pathname);
+      ask(shared);
+    }
   }, []);
 
   const update = (id, patch) => setMessages((all) => all.map((m) => (m.id === id ? { ...m, ...(typeof patch === 'function' ? patch(m) : patch) } : m)));

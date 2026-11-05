@@ -1,5 +1,9 @@
 # UZEX AI Agent
 
+> **Deploy branch:** live at https://vitality.comma.uz (API: https://vitality-api.comma.uz).
+> The agentic analyst (Groq LLM → guarded DuckDB SQL → grounded, number-verified answer) is described in
+> **[docs/SOLUTION.md](docs/SOLUTION.md)**; evaluation in `backend/evals/`, deployment in `deploy/`.
+
 A bilingual Uzbek/Russian AI agent for a fixed synthetic dataset of 500,000
 exchange transactions. Milestone 3A adds read-only DuckDB access and catalog inspection.
 No dataset, database, or Groq key is needed.

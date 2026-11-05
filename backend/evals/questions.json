@@ -1,54 +1,164 @@
 [
- {"id":"count_2024_ru","q":"Сколько сделок было заключено в 2024 году?",
-  "truth":"select count(*) from main.deals where year(deal_date)=2024","expect":"numbers"},
- {"id":"count_2024_uzcyrl","q":"2024 йилда нечта битим тузилган?",
-  "truth":"select count(*) from main.deals where year(deal_date)=2024","expect":"numbers"},
- {"id":"turnover_2025_uz","q":"2025-yilda birjadagi jami savdo hajmi so'mda qancha bo'lgan?",
-  "truth":"select round(sum(case when currency='USD' then transaction_amount::decimal(18,2)*usd_rate_on_deal_date::decimal(18,2) else transaction_amount::decimal(18,2) end),0) from main.deals where year(deal_date)=2025","expect":"numbers","tolerance":0.001},
- {"id":"top_product_count_ru","q":"Какой товар лидирует по количеству сделок за весь период?",
-  "truth":"select 'хлопок', count(*) from main.deals d join main.contracts c using(contract_id) where lower(c.product_name) like '%хлопок%сырец%'","expect":"text_and_numbers"},
- {"id":"region_2023_uz","q":"2023-yilda Toshkent shahrida nechta bitim tuzilgan?",
-  "truth":"select count(*) from main.deals where year(deal_date)=2023 and warehouse_region_source='Toshkent shahri'","expect":"numbers"},
- {"id":"top_buyer_2025_ru","q":"Кто был крупнейшим покупателем по сумме сделок в 2025 году?",
-  "truth":"select 'zoket'","expect":"text"},
- {"id":"cancelled_ru","q":"Сколько сделок было аннулировано?",
-  "truth":"select count(*) from main.deals where official_status='Аннулирован(Не оплачен)'","expect":"numbers"},
- {"id":"export_usd_uz","q":"Eksport bitimlari soni va ularning dollardagi umumiy summasi qancha?",
-  "truth":"select count(*), round(sum(transaction_amount),0) from main.deals where contract_type='Экспортный'","expect":"numbers","tolerance":0.001},
- {"id":"region_leader_uz","q":"Qaysi viloyatda eng ko'p bitim tuzilgan?",
-  "truth":"select 'toshkent shahri', count(*) from main.deals where warehouse_region_source='Toshkent shahri'","expect":"text_and_numbers"},
- {"id":"growth_ru","q":"На сколько процентов выросло количество сделок в 2025 году по сравнению с 2024?",
-  "truth":"select round(100.0*(115763-106647)/106647,1)","expect":"numbers","tolerance":0.002},
- {"id":"forward_share_ru","q":"Какова доля форвардных контрактов в общем числе сделок?",
-  "truth":"select round(100.0*36431/500000,1)","expect":"numbers","tolerance":0.002},
- {"id":"unique_buyers_2026_uz","q":"2026-yilda nechta noyob xaridor savdoda qatnashgan?",
-  "truth":"select count(distinct buyer_inn) from main.deals where year(deal_date)=2026","expect":"numbers"},
- {"id":"biggest_deal_ru","q":"Какая самая крупная сделка по сумме в сумах? Укажи номер сделки и товар.",
-  "truth":"select deal_id from main.deals where currency='UZS' order by transaction_amount desc limit 1","expect":"numbers"},
- {"id":"usd_rate_ru","q":"Какой был курс доллара 15 марта 2024 года?",
-  "truth":"select usd_uzs_rate::decimal(18,2) from main.usd_rates where rate_date='2024-03-15'","expect":"numbers"},
- {"id":"ai92_uz","q":"AI-92 benzini bo'yicha nechta bitim bo'lgan?",
-  "truth":"select count(*) from main.deals where lower(replace(product_name,'-',' ')) like '%аи 92%'","expect":"numbers"},
- {"id":"wheat_tonnes_2024_ru","q":"Сколько тонн пшеницы было продано в 2024 году?",
-  "truth":"select sum(d.deal_quantity_lots::bigint*d.lot_size::bigint) from main.deals d join main.contracts c using(contract_id) where year(deal_date)=2024 and lower(c.product_name) like '%пшениц%' and d.measurement_unit_source='тонна'","expect":"numbers"},
- {"id":"reverse_auction_2023_uz","q":"2023-yilda teskari auksion orqali nechta bitim tuzilgan?",
-  "truth":"select count(*) from main.deals where year(deal_date)=2023 and auction_type='Обратный аукцион'","expect":"numbers"},
- {"id":"best_month_2025_ru","q":"В каком месяце 2025 года был наибольший объём торгов в сумах?",
-  "truth":"select month(deal_date) m from main.deals where year(deal_date)=2025 group by 1 order by sum(case when currency='USD' then transaction_amount::decimal(18,2)*usd_rate_on_deal_date::decimal(18,2) else transaction_amount::decimal(18,2) end) desc limit 1","expect":"month"},
- {"id":"broker_top_ru","q":"Какой брокер покупателей провёл больше всего сделок?",
-  "truth":"select b.company_name, count(*) n from main.deals d join main.brokers b on b.broker_code=d.buyer_broker_code group by 1 order by n desc limit 1","expect":"text_and_numbers"},
- {"id":"avg_rate_2025_uz","q":"2025-yilda o'rtacha dollar kursi qancha bo'lgan?",
-  "truth":"select round(avg(usd_uzs_rate::double),2) from main.usd_rates where year(rate_date)=2025","expect":"numbers","tolerance":0.001},
- {"id":"cotton_price_2025_ru","q":"Какая средневзвешенная цена хлопка-сырца за килограмм в 2025 году?",
-  "truth":"select round(sum(transaction_amount::double)/sum(d.deal_quantity_lots::double*d.lot_size::double),2) from main.deals d join main.contracts c using(contract_id) where year(deal_date)=2025 and lower(replace(c.product_name,'-',' ')) like '%хлопок сырец%' and d.measurement_unit_source='килограмм'","expect":"numbers","tolerance":0.005},
- {"id":"no_data_2021_uz","q":"2021-yilda nechta bitim bo'lgan?",
-  "truth":"select 0","expect":"nodata"},
- {"id":"vat_buyers_ru","q":"Сколько покупателей являются плательщиками НДС?",
-  "truth":"select count(*) from main.participants where role_source='Покупатель' and vat_payer_source='Да'","expect":"numbers"},
- {"id":"wheat_region_uz","q":"Bug'doy savdosi summasi bo'yicha qaysi viloyat birinchi o'rinda?",
-  "truth":"select lower(d.warehouse_region_source) from main.deals d join main.contracts c using(contract_id) where lower(c.product_name) like '%пшениц%' group by 1 order by sum(transaction_amount::decimal(18,2)) desc limit 1","expect":"text"},
- {"id":"seller_count_ru","q":"Сколько продавцов зарегистрировано в системе?",
-  "truth":"select count(*) from main.participants where role_source='Продавец'","expect":"numbers"},
- {"id":"cement_2025_q1_ru","q":"Объём продаж цемента в первом квартале 2025 года в тоннах и сумма?",
-  "truth":"select sum(d.deal_quantity_lots::bigint*d.lot_size::bigint) from main.deals d join main.contracts c using(contract_id) where deal_date between '2025-01-01' and '2025-03-31' and lower(c.product_name) like '%цемент%' and d.measurement_unit_source='тонна'","expect":"numbers"}
+ {
+  "id": "count_2024_ru",
+  "q": "Сколько сделок было заключено в 2024 году?",
+  "truth": "select count(*) from main.deals where year(deal_date)=2024",
+  "expect": "numbers"
+ },
+ {
+  "id": "count_2024_uzcyrl",
+  "q": "2024 йилда нечта битим тузилган?",
+  "truth": "select count(*) from main.deals where year(deal_date)=2024",
+  "expect": "numbers"
+ },
+ {
+  "id": "turnover_2025_uz",
+  "q": "2025-yilda birjadagi jami savdo hajmi so'mda qancha bo'lgan?",
+  "truth": "select round(sum(case when currency='USD' then transaction_amount::decimal(18,2)*usd_rate_on_deal_date::decimal(18,2) else transaction_amount::decimal(18,2) end),0) from main.deals where year(deal_date)=2025",
+  "expect": "numbers",
+  "tolerance": 0.001
+ },
+ {
+  "id": "top_product_count_ru",
+  "q": "Какой товар лидирует по количеству сделок за весь период?",
+  "truth": "select 'хлопок', count(*) from main.deals d join main.contracts c using(contract_id) where lower(c.product_name) like '%хлопок%сырец%'",
+  "expect": "text_and_numbers"
+ },
+ {
+  "id": "region_2023_uz",
+  "q": "2023-yilda Toshkent shahrida nechta bitim tuzilgan?",
+  "truth": "select count(*) from main.deals where year(deal_date)=2023 and warehouse_region_source='Toshkent shahri'",
+  "expect": "numbers"
+ },
+ {
+  "id": "top_buyer_2025_ru",
+  "q": "Кто был крупнейшим покупателем по сумме сделок в 2025 году?",
+  "truth": "select 'zoket'",
+  "expect": "text"
+ },
+ {
+  "id": "cancelled_ru",
+  "q": "Сколько сделок было аннулировано?",
+  "truth": "select count(*) from main.deals where official_status='Аннулирован(Не оплачен)'",
+  "expect": "numbers"
+ },
+ {
+  "id": "export_usd_uz",
+  "q": "Eksport bitimlari soni va ularning dollardagi umumiy summasi qancha?",
+  "truth": "select count(*), round(sum(transaction_amount),0) from main.deals where contract_type='Экспортный'",
+  "expect": "numbers",
+  "tolerance": 0.001
+ },
+ {
+  "id": "region_leader_uz",
+  "q": "Qaysi viloyatda eng ko'p bitim tuzilgan?",
+  "truth": "select 'toshkent shahri', count(*) from main.deals where warehouse_region_source='Toshkent shahri'",
+  "expect": "text_and_numbers"
+ },
+ {
+  "id": "growth_ru",
+  "q": "На сколько процентов выросло количество сделок в 2025 году по сравнению с 2024?",
+  "truth": "select round(100.0*(count(*) filter (where year(deal_date)=2025) - count(*) filter (where year(deal_date)=2024)) / count(*) filter (where year(deal_date)=2024), 2) from main.deals",
+  "expect": "numbers",
+  "tolerance": 0.002
+ },
+ {
+  "id": "forward_share_ru",
+  "q": "Какова доля форвардных контрактов в общем числе сделок?",
+  "truth": "select round(100.0*count(*) filter (where contract_form='Форвард')/count(*), 2) from main.deals",
+  "expect": "numbers",
+  "tolerance": 0.002
+ },
+ {
+  "id": "unique_buyers_2026_uz",
+  "q": "2026-yilda nechta noyob xaridor savdoda qatnashgan?",
+  "truth": "select count(distinct buyer_inn) from main.deals where year(deal_date)=2026",
+  "expect": "numbers"
+ },
+ {
+  "id": "biggest_deal_ru",
+  "q": "Какая самая крупная сделка по сумме в сумах? Укажи номер сделки и товар.",
+  "truth": "select deal_id from main.deals where currency='UZS' order by transaction_amount desc limit 1",
+  "expect": "numbers"
+ },
+ {
+  "id": "usd_rate_ru",
+  "q": "Какой был курс доллара 15 марта 2024 года?",
+  "truth": "select usd_uzs_rate::decimal(18,2) from main.usd_rates where rate_date='2024-03-15'",
+  "expect": "numbers"
+ },
+ {
+  "id": "ai92_uz",
+  "q": "AI-92 benzini bo'yicha nechta bitim bo'lgan?",
+  "truth": "select count(*) from main.deals where lower(replace(product_name,'-',' ')) like '%аи 92%'",
+  "expect": "numbers"
+ },
+ {
+  "id": "wheat_tonnes_2024_ru",
+  "q": "Сколько тонн пшеницы было продано в 2024 году?",
+  "truth": "select sum(d.deal_quantity_lots::bigint*d.lot_size::bigint) from main.deals d join main.contracts c using(contract_id) where year(deal_date)=2024 and lower(c.product_name) like '%пшениц%' and d.measurement_unit_source='тонна'",
+  "expect": "numbers"
+ },
+ {
+  "id": "reverse_auction_2023_uz",
+  "q": "2023-yilda teskari auksion orqali nechta bitim tuzilgan?",
+  "truth": "select count(*) from main.deals where year(deal_date)=2023 and auction_type='Обратный аукцион'",
+  "expect": "numbers"
+ },
+ {
+  "id": "best_month_2025_ru",
+  "q": "В каком месяце 2025 года был наибольший объём торгов в сумах?",
+  "truth": "select month(deal_date) m from main.deals where year(deal_date)=2025 group by 1 order by sum(case when currency='USD' then transaction_amount::decimal(18,2)*usd_rate_on_deal_date::decimal(18,2) else transaction_amount::decimal(18,2) end) desc limit 1",
+  "expect": "month"
+ },
+ {
+  "id": "broker_top_ru",
+  "q": "Какой брокер покупателей провёл больше всего сделок?",
+  "truth": "select b.company_name, count(*) n from main.deals d join main.brokers b on b.broker_code=d.buyer_broker_code group by 1 order by n desc limit 1",
+  "expect": "text_and_numbers"
+ },
+ {
+  "id": "avg_rate_2025_uz",
+  "q": "2025-yilda o'rtacha dollar kursi qancha bo'lgan?",
+  "truth": "select round(avg(usd_uzs_rate::double),2) from main.usd_rates where year(rate_date)=2025",
+  "expect": "numbers",
+  "tolerance": 0.001
+ },
+ {
+  "id": "cotton_price_2025_ru",
+  "q": "Какая средневзвешенная цена хлопка-сырца за килограмм в 2025 году?",
+  "truth": "select round(sum(transaction_amount::double)/sum(d.deal_quantity_lots::double*d.lot_size::double),2) from main.deals d join main.contracts c using(contract_id) where year(deal_date)=2025 and lower(replace(c.product_name,'-',' ')) like '%хлопок сырец%' and d.measurement_unit_source='килограмм'",
+  "expect": "numbers",
+  "tolerance": 0.005
+ },
+ {
+  "id": "no_data_2021_uz",
+  "q": "2021-yilda nechta bitim bo'lgan?",
+  "truth": "select 0",
+  "expect": "nodata"
+ },
+ {
+  "id": "vat_buyers_ru",
+  "q": "Сколько покупателей являются плательщиками НДС?",
+  "truth": "select count(*) from main.participants where role_source='Покупатель' and vat_payer_source='Да'",
+  "expect": "numbers"
+ },
+ {
+  "id": "wheat_region_uz",
+  "q": "Bug'doy savdosi summasi bo'yicha qaysi viloyat birinchi o'rinda?",
+  "truth": "select lower(d.warehouse_region_source) from main.deals d join main.contracts c using(contract_id) where lower(c.product_name) like '%пшениц%' group by 1 order by sum(transaction_amount::decimal(18,2)) desc limit 1",
+  "expect": "text"
+ },
+ {
+  "id": "seller_count_ru",
+  "q": "Сколько продавцов зарегистрировано в системе?",
+  "truth": "select count(*) from main.participants where role_source='Продавец'",
+  "expect": "numbers"
+ },
+ {
+  "id": "cement_2025_q1_ru",
+  "q": "Объём продаж цемента в первом квартале 2025 года в тоннах и сумма?",
+  "truth": "select sum(d.deal_quantity_lots::bigint*d.lot_size::bigint) from main.deals d join main.contracts c using(contract_id) where deal_date between '2025-01-01' and '2025-03-31' and lower(c.product_name) like '%цемент%' and d.measurement_unit_source='тонна'",
+  "expect": "numbers"
+ }
 ]
