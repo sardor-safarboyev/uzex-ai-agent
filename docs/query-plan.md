@@ -1,5 +1,11 @@
 # Query plan 1.1
 
+The exact Uzbek calendar-year percentage-series template returns typed
+`unsupported_yearly_series` for a multi-year series: the contract supports one
+two-period comparison, not a batch of successive comparisons. An adjacent-year
+range uses the existing `comparison` with `changes: ["percentage_change"]`.
+Both routes precede Groq and never infer counts or executable SQL.
+
 ## Final quality: currency-scoped counts
 
 In version 1.1, a nonmonetary aggregate may use

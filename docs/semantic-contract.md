@@ -1,5 +1,10 @@
 # Semantic contract 1.1
 
+Percentage changes retain the existing two-period comparison semantics. A
+multi-year sequence of year-over-year changes is not an executable plan shape;
+the deterministic template returns `unsupported_yearly_series` with specific
+bilingual guidance rather than treating the clear request as ambiguous.
+
 Currency-scoped count extension: an explicit source-currency money policy may
 select USD or UZS transactions for nonmonetary aggregates/comparisons. Counts
 retain transaction units; no amount conversion occurs. The exact contract join,
