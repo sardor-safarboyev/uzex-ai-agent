@@ -1,6 +1,6 @@
 {
- "passed": 0,
- "total": 2,
+ "passed": 22,
+ "total": 26,
  "rows": [
   {
    "id": "count_2024_ru",
@@ -8,18 +8,38 @@
    "truth": [
     "106647"
    ],
-   "pass": false,
-   "why": "number 106647",
-   "seconds": 4.17,
-   "status": "error",
-   "verified": null,
+   "pass": true,
+   "why": "",
+   "seconds": 2.05,
+   "status": "answered",
+   "verified": true,
    "models": [
     "groq:openai/gpt-oss-120b",
     "groq:qwen/qwen3.8-27b"
    ],
-   "answer": "Не удалось построить корректный запрос к данным. Переформулируйте вопрос, пожалуйста.",
+   "answer": "В 2024 году было заключено **106 647** сделок.\n\n*   Исполнено: 94 481\n*   Частично исполнено: 4 843\n*   Аннулировано: 7 323\n\n*Период: 2024 год; Метрика: количество сделок; Статусы: все (исполненные, частично исполненные, аннулированные).*",
    "sql": [
-    "SELECT COUNT(*) AS total_deals FROM trades WHERE year = 2024;"
+    "SELECT COUNT(*) AS total_deals,\n       COUNT(*) FILTER (WHERE status='Аннулирован(Не оплачен)') AS cancelled_deals,\n       COUNT(*) FILTER (WHERE status='Исполнен') AS executed_deals,\n       COUNT(*) FILTER (WHERE status='Исполнен(Частично)') AS partially_executed_deals\nFROM trades\nWHERE year = 2024;"
+   ]
+  },
+  {
+   "id": "count_2024_uzcyrl",
+   "question": "2024 йилда нечта битим тузилган?",
+   "truth": [
+    "106647"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 1.62,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "2024 йилда жами **106 647** та битим тузилган.\n\n*Асос: 2024 йил давомидаги битимлар сони (маълумотлар базаси 2022-01-03 – 2026-10-30 даврни қамраб олади).*",
+   "sql": [
+    "SELECT COUNT(*) AS total_deals FROM trades WHERE year = 2024"
    ]
   },
   {
@@ -28,17 +48,463 @@
    "truth": [
     "55976577480267"
    ],
-   "pass": false,
-   "why": "number 55976577480267",
-   "seconds": 42.4,
-   "status": "error",
-   "verified": null,
+   "pass": true,
+   "why": "",
+   "seconds": 1.82,
+   "status": "answered",
+   "verified": true,
    "models": [
     "groq:qwen/qwen3.8-27b"
    ],
-   "answer": "Ma'lumotlarga to'g'ri so'rov tuzib bo'lmadi. Savolni boshqacha ifodalab ko'ring.",
+   "answer": "2025-yilda UZEX birjasidagi jami savdo hajmi **55 976 577 480 267,28 so'm** (≈55,98 trln so'm) ni tashkil etgan.\n\n*   Jami bitimlar soni: 115 763 ta\n*   Bekor qilingan bitimlar soni: 8 085 ta\n\n*Asos: 2025-yil davri, barcha bitimlar, so'mda umumiy savdo hajmi (amount_uzs).*",
    "sql": [
     "SELECT \n    ROUND(SUM(amount_uzs), 2) AS total_amount_uzs,\n    COUNT(*) AS total_deals,\n    COUNT(*) FILTER (WHERE status = 'Аннулирован(Не оплачен)') AS cancelled_deals\nFROM trades\nWHERE year = 2025"
+   ]
+  },
+  {
+   "id": "top_product_count_ru",
+   "question": "Какой товар лидирует по количеству сделок за весь период?",
+   "truth": [
+    "хлопок",
+    "136208"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 1.54,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "**Хлопок-сырец** лидирует по количеству сделок, их число составляет **136 208**.\n\n*   Товар: Хлопок-сырец\n*   Количество сделок: 136 208\n\n*Период: 2022-01-03 – 2026-10-30, все статусы сделок, без фильтрации по валюте.*",
+   "sql": [
+    "SELECT commodity, COUNT(*) AS deal_count FROM trades GROUP BY commodity ORDER BY deal_count DESC LIMIT 1"
+   ]
+  },
+  {
+   "id": "region_2023_uz",
+   "question": "2023-yilda Toshkent shahrida nechta bitim tuzilgan?",
+   "truth": [
+    "14856"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 17.74,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:qwen/qwen3.8-27b",
+    "openrouter:nvidia/nemotron-3.5-lightning:free"
+   ],
+   "answer": "2023-yilda Toshkent shahrida jami **14 856** ta bitim tuzilgan.\n\n*Asos: 2023-yil davri, Toshkent shahri filtri, bitimlar soni (statuslar va valyuta konversiyasi hisobga olinmagan).*",
+   "sql": [
+    "SELECT COUNT(*) AS total_deals FROM trades WHERE year = 2023 AND region = 'Toshkent shahri';"
+   ]
+  },
+  {
+   "id": "top_buyer_2025_ru",
+   "question": "Кто был крупнейшим покупателем по сумме сделок в 2025 году?",
+   "truth": [
+    "zoket"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 1.38,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Крупнейшим покупателем по сумме сделок в 2025 году стала компания **\"Zoket Invest\" OK** с общим объёмом **1 570 655 923 878,51 сум** (≈1,57 трлн сум).\n\n*   Количество сделок: 2 412.\n\n*Основание: период 2025 год, метрика — суммарная стоимость сделок в сум, статусы и конвертация валют по курсу ЦБ РУз на дату сделки.*",
+   "sql": [
+    "SELECT \n    buyer_name,\n    COUNT(*) AS deals_count,\n    ROUND(SUM(amount_uzs), 2) AS total_amount_uzs\nFROM trades\nWHERE year = 2025\nGROUP BY buyer_name\nORDER BY total_amount_uzs DESC\nLIMIT 1"
+   ]
+  },
+  {
+   "id": "cancelled_ru",
+   "question": "Сколько сделок было аннулировано?",
+   "truth": [
+    "33719"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 2.61,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Всего было аннулировано **33 719** сделок.\n\n*Основание: период 2022-01-03 – 2026-10-30, фильтр по статусу «Аннулирован(Не оплачен)», мера — количество сделок.*",
+   "sql": [
+    "SELECT COUNT(*) FILTER (WHERE status='Аннулирован(Не оплачен)') AS cancelled_deals FROM trades;"
+   ]
+  },
+  {
+   "id": "export_usd_uz",
+   "question": "Eksport bitimlari soni va ularning dollardagi umumiy summasi qancha?",
+   "truth": [
+    "6590",
+    "1137509729"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 2.08,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Eksport bitimlari soni **6 590** ta bo‘lib, ularning dollardagi umumiy summasi **1 137 509 729,39 AQSh dollari**ni tashkil etadi.\n\n* Asos: 2022-01-03 – 2026-10-30 davri, contract_type='Экспортный' filtri, bitimlar soni va AQSh dollaridagi umumiy summa.",
+   "sql": [
+    "SELECT COUNT(*) AS export_deals_count,\n       ROUND(SUM(amount_usd),2) AS total_amount_usd\nFROM trades\nWHERE contract_type = 'Экспортный'"
+   ]
+  },
+  {
+   "id": "region_leader_uz",
+   "question": "Qaysi viloyatda eng ko'p bitim tuzilgan?",
+   "truth": [
+    "toshkent shahri",
+    "98435"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 1.56,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Eng ko'p bitim tuzilgan viloyat **Toshkent shahri** bo'lib, u yerda jami **98 435** ta bitim amalga oshirilgan.\n\n*Asos: 2022-01-03 – 2026-10-30 davri, barcha bitimlar, bitimlar soni (shartnomalar soni).*",
+   "sql": [
+    "SELECT region AS viloyat, COUNT(*) AS bitim_soni\nFROM trades\nGROUP BY region\nORDER BY bitim_soni DESC\nLIMIT 1"
+   ]
+  },
+  {
+   "id": "growth_ru",
+   "question": "На сколько процентов выросло количество сделок в 2025 году по сравнению с 2024?",
+   "truth": [
+    "8.5"
+   ],
+   "pass": false,
+   "why": "number 8.5",
+   "seconds": 49.88,
+   "status": "error",
+   "verified": null,
+   "models": [],
+   "answer": "Сервис ИИ сейчас перегружен (лимит запросов). Повторите вопрос через несколько секунд.",
+   "sql": []
+  },
+  {
+   "id": "forward_share_ru",
+   "question": "Какова доля форвардных контрактов в общем числе сделок?",
+   "truth": [
+    "7.3"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 2.08,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "**7,29%** сделок на UZEX приходится на форвардные контракты.\n\n*Основание: период 2022-01-03 – 2026-10-30, все статусы сделок, доля форвардных контрактов от общего числа.*",
+   "sql": [
+    "SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE contract_form='Форвард') / COUNT(*), 2) AS forward_share_percent FROM trades"
+   ]
+  },
+  {
+   "id": "unique_buyers_2026_uz",
+   "question": "2026-yilda nechta noyob xaridor savdoda qatnashgan?",
+   "truth": [
+    "12878"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 1.54,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "2026-yilda savdoda qatnashgan noyob xaridorlar soni **12 878** tani.\n\n*Asos: 2026-yil davri, barcha savdolar, noyob xaridorlar (buyer_inn) soni.*",
+   "sql": [
+    "SELECT COUNT(DISTINCT buyer_inn) AS unique_buyers FROM trades WHERE year = 2026;"
+   ]
+  },
+  {
+   "id": "biggest_deal_ru",
+   "question": "Какая самая крупная сделка по сумме в сумах? Укажи номер сделки и товар.",
+   "truth": [
+    "247890"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 1.79,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Самая крупная сделка по сумме в сумах — **30 190 376 286 сум** (≈30,2 млрд сум).\n\n*   Номер сделки: 247890\n*   Товар: Пшеница\n*   Дата: 2023-10-09\n*   Валюта: UZS\n\n*Период: 2022-01-03 – 2026-10-30; Метрика: сумма сделки в сумах (amount_uzs); Валютная конвертация: не требуется (сделка в UZS).*",
+   "sql": [
+    "SELECT deal_id, commodity, amount_uzs, deal_date, currency FROM trades ORDER BY amount_uzs DESC LIMIT 1"
+   ]
+  },
+  {
+   "id": "usd_rate_ru",
+   "question": "Какой был курс доллара 15 марта 2024 года?",
+   "truth": [
+    "11720.49"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 1.39,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Официальный курс доллара США к суму на 15 марта 2024 года составлял **11720.49 сум**.\n\n*Основание: данные ежедневных курсов ЦБ на 15 марта 2024 года.*",
+   "sql": [
+    "SELECT usd_uzs FROM usd_rates_v WHERE rate_date = '2024-03-15'"
+   ]
+  },
+  {
+   "id": "ai92_uz",
+   "question": "AI-92 benzini bo'yicha nechta bitim bo'lgan?",
+   "truth": [
+    "8764"
+   ],
+   "pass": false,
+   "why": "number 8764",
+   "seconds": 61.88,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:qwen/qwen3.8-27b",
+    "openrouter:nvidia/nemotron-3.5-lightning:free"
+   ],
+   "answer": "Ma'lumotlar bazasida AI-92 benzini bo'yicha **0** ta bitim ro'yxatga olingan.\n\n*   Ushbu mahsulot uchun hech qanday bitim topilmadi.\n\n*Ma'lumotlar 2022-01-03 – 2026-10-30 davri uchun, \"AI-92 benzini\" filtri asosida hisoblangan.*",
+   "sql": [
+    "SELECT COUNT(*) AS bitim_soni FROM trades WHERE commodity = 'Бензин' AND product_norm ILIKE '%ai 92%';"
+   ]
+  },
+  {
+   "id": "wheat_tonnes_2024_ru",
+   "question": "Сколько тонн пшеницы было продано в 2024 году?",
+   "truth": [
+    "2242298"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 2.15,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "В 2024 году было продано **2 242 298** тонн пшеницы.\n\n*Основание: период 2024 год, продукт «пшеница», мера — тонны, статусы сделок — все, конвертация валют не требуется.*",
+   "sql": [
+    "SELECT ROUND(SUM(quantity),2) AS total_tonnes\nFROM trades\nWHERE commodity = 'Пшеница'\n  AND year = 2024\n  AND unit = 'тонна';"
+   ]
+  },
+  {
+   "id": "reverse_auction_2023_uz",
+   "question": "2023-yilda teskari auksion orqali nechta bitim tuzilgan?",
+   "truth": [
+    "1399"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 1.25,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "2023-yilda teskari auksion orqali jami **1 399** ta bitim tuzilgan.\n\n*Asos: 2023-yil davri, \"Обратный аукцион\" maqsadi bo‘yicha bitimlar soni.*",
+   "sql": [
+    "SELECT COUNT(*) AS deal_count FROM trades WHERE year = 2023 AND auction_type = 'Обратный аукцион';"
+   ]
+  },
+  {
+   "id": "best_month_2025_ru",
+   "question": "В каком месяце 2025 года был наибольший объём торгов в сумах?",
+   "truth": [
+    "10"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 1.86,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Наибольший объём торгов в 2025 году зафиксирован в **октябре** — **9 463 910 999 829,73 сум** (≈9,5 трлн сум).\n\n*Основание: данные за 2025 год, объём торгов в сум, статусы сделок не указаны, конвертация не требуется.*",
+   "sql": [
+    "SELECT month, ROUND(SUM(amount_uzs),2) AS total_uzs\nFROM trades\nWHERE year = 2025\nGROUP BY month\nORDER BY total_uzs DESC\nLIMIT 1;"
+   ]
+  },
+  {
+   "id": "broker_top_ru",
+   "question": "Какой брокер покупателей провёл больше всего сделок?",
+   "truth": [
+    "FIPI BROKER MCHJ",
+    "13447"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 2.37,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Больше всего сделок провёл брокер **FIPI BROKER MCHJ** — **13 447** сделок.\n\n*   Общая сумма по этим сделкам составила 7 448 745 169 992,49 сум (≈7,4 трлн сум).\n\n*Источники: данные за период 2022-01-03 – 2026-10-30, все статусы сделок, валюта — сум (USD пересчитаны по курсу ЦБ на дату сделки).*",
+   "sql": [
+    "SELECT \n    buyer_broker_name,\n    COUNT(*) AS deals_count,\n    ROUND(SUM(amount_uzs), 2) AS total_amount_uzs\nFROM trades\nWHERE buyer_broker_name IS NOT NULL\nGROUP BY buyer_broker_name\nORDER BY deals_count DESC, total_amount_uzs DESC\nLIMIT 1"
+   ]
+  },
+  {
+   "id": "avg_rate_2025_uz",
+   "question": "2025-yilda o'rtacha dollar kursi qancha bo'lgan?",
+   "truth": [
+    "12428.46"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 0.96,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "2025-yilda o'rtacha dollar kursi **12 428,46 so'm** (UZS/USD) ni tashkil etgan.\n\n*Asos: 2025-yil davri, o'rtacha kurs ko'rsatkichi, CBU kurslari asosida hisoblangan.*",
+   "sql": [
+    "SELECT ROUND(AVG(usd_uzs), 2) AS avg_usd_rate_2025 FROM usd_rates_v WHERE rate_date >= '2025-01-01' AND rate_date <= '2025-12-31'"
+   ]
+  },
+  {
+   "id": "cotton_price_2025_ru",
+   "question": "Какая средневзвешенная цена хлопка-сырца за килограмм в 2025 году?",
+   "truth": [
+    "9194.51"
+   ],
+   "pass": false,
+   "why": "number 9194.51",
+   "seconds": 33.75,
+   "status": "error",
+   "verified": null,
+   "models": [],
+   "answer": "Сервис ИИ сейчас перегружен (лимит запросов). Повторите вопрос через несколько секунд.",
+   "sql": []
+  },
+  {
+   "id": "no_data_2021_uz",
+   "question": "2021-yilda nechta bitim bo'lgan?",
+   "truth": [
+    "0"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 2.55,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "**2021-yilda bitimlar soni 0 ta.**\n\n* Ma’lumotlar bazasi 2022-yil 3-yanvardan 2026-yil 30-oktabrgacha davrni qamrab oladi.\n* Shu sababli 2021-yilga oid bitimlar ma’lumotlar to‘plamida mavjud emas.\n\n*Asos: 2021-yil davri, bitimlar soni (deal_count), barcha holatlar.*",
+   "sql": [
+    "SELECT COALESCE(COUNT(*),0) AS deal_count FROM trades WHERE year = 2021"
+   ]
+  },
+  {
+   "id": "vat_buyers_ru",
+   "question": "Сколько покупателей являются плательщиками НДС?",
+   "truth": [
+    "9772"
+   ],
+   "pass": false,
+   "why": "number 9772",
+   "seconds": 1.56,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "**9 770** покупателей являются плательщиками НДС.\n\n*Основание: доступный период, фильтр buyer_vat_payer='Да', мера: количество уникальных buyer_inn.*",
+   "sql": [
+    "SELECT COUNT(DISTINCT buyer_inn) AS vat_payer_buyers FROM trades WHERE buyer_vat_payer = 'Да';"
+   ]
+  },
+  {
+   "id": "wheat_region_uz",
+   "question": "Bug'doy savdosi summasi bo'yicha qaysi viloyat birinchi o'rinda?",
+   "truth": [
+    "xorazm viloyati"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 3.29,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Bug'doy savdosi summasi bo'yicha birinchi o'rinda **Xorazm viloyati** turadi.\n\n*   Xorazm viloyati: 13 101 746 440 091 so'm (≈13,1 trln so'm)\n\n*Asos: 2022-01-03 – 2026-10-30 davri, mahsulot: Пшеница, o'lchov: jami summa (UZS), AQSh dollaridagi savdolar har bir sana uchun CBU kursi bo'yicha so'mga o'tkazilgan.*",
+   "sql": [
+    "SELECT region, ROUND(SUM(amount_uzs),2) AS total_amount_uzs FROM trades WHERE commodity='Пшеница' GROUP BY region ORDER BY total_amount_uzs DESC LIMIT 1"
+   ]
+  },
+  {
+   "id": "seller_count_ru",
+   "question": "Сколько продавцов зарегистрировано в системе?",
+   "truth": [
+    "392"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 0.9,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "В системе зарегистрировано **392** уникальных продавца.\n\n*Основание: период 2022-01-03 – 2026-10-30, все сделки, количество уникальных продавцов по ИНН.*",
+   "sql": [
+    "SELECT COUNT(DISTINCT seller_inn) AS unique_sellers FROM trades"
+   ]
+  },
+  {
+   "id": "cement_2025_q1_ru",
+   "question": "Объём продаж цемента в первом квартале 2025 года в тоннах и сумма?",
+   "truth": [
+    "246623"
+   ],
+   "pass": true,
+   "why": "",
+   "seconds": 1.71,
+   "status": "answered",
+   "verified": true,
+   "models": [
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "**Объём продаж цемента в первом квартале 2025 года составил 246 623 тонны на сумму 234 632 610 667 сум (≈234,6 млрд сум).**\n\n*   Количество сделок: 1 533\n*   Отменённые сделки: 114\n*   Сумма сделок в сум: 234 632 610 667\n*   Сумма сделок в долларах США: 0\n\n*Период: Q1 2025; Мера: тонны и сум; Статусы: все (включая отменённые); Валютная конвертация: USD в сум по курсу ЦБ на дату сделки.*",
+   "sql": [
+    "SELECT \n    SUM(quantity) FILTER (WHERE unit = 'тонна') AS volume_tonnes,\n    SUM(quantity) FILTER (WHERE unit = 'килограмм') / 1000.0 AS volume_kg_as_tonnes,\n    ROUND(SUM(amount_uzs), 2) AS total_amount_uzs,\n    ROUND(SUM(amount) FILTER (WHERE currency = 'UZS'), 2) AS uzs_deals_amount,\n    ROUND(SUM(amount) FILTER (WHERE currency = 'USD'), 2) AS usd_deals_amount_usd,\n    COUNT(*) AS total_deals,\n    COUNT(*) FILTER (WHERE status = 'Аннулирован(Не оплачен)') AS cancelled_deals\nFROM trades\nWHERE commodity = 'Цемент'\n  AND year = 2025\n  AND quarter = 1"
    ]
   }
  ]

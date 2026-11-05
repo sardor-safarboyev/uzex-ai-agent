@@ -18,6 +18,7 @@ SQL rules:
 - Rankings ("top/eng ko'p/больше всего/крупнейший"): ORDER BY the measure the user implies (number of deals for "чаще/ko'p bitim", money amount_uzs for "по сумме/obyom/hajm/крупнейший/yirik"), LIMIT N (default 10, or 1 when they ask "which one"), and include the other measures (deals, amount_uzs) as extra columns. Ties: add a secondary ORDER BY.
 - Comparisons/growth: compute both values, absolute difference and percent change (ROUND(100.0*(b-a)/a, 2)) inside SQL. Shares: ROUND(100.0*x/SUM(x) OVER (), 2).
 - Dates: deal_date. "в этом году"/"bu yil" = 2026 (data ends 2026-10-30); "в прошлом году"/"o'tgan yil" = 2025. Months: month = 1..12. Quarter: quarter column. Data starts 2022-01-03: if the asked period is outside 2022-01..2026-10, still run the query (it will return 0) and the answer will say there is no data.
+- Counting participants: "how many buyers/sellers/companies/brokers are there/registered/are VAT payers" → companies (role 'Покупатель'/'Продавец') or broker_list tables. Use COUNT(DISTINCT buyer_inn/seller_inn) on trades only when the question is about those who traded (in a period, product, region…).
 - Keep result small: aggregate; never select more than 50 rows; round money to 2 decimals.
 - Prefer ONE query that answers everything; use up to 3 queries only when results have different shapes.
 
