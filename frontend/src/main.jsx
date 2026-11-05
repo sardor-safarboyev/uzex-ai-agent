@@ -31,13 +31,14 @@ function App() {
   const [sessions,setSessions]=useState(()=>loadChats());
   const [active,setActive]=useState(()=>sessions[0]?.id||newChat().id);
   const [lang,setLang]=useState('uz'),[mode,setMode]=useState('auto'),[question,setQuestion]=useState(''),[busy,setBusy]=useState(false),[examples,setExamples]=useState([]),[storageError,setStorageError]=useState(false);
-  const pending=useRef(false),controller=useRef(null),responseRef=useRef(null);
+  const pending=useRef(false),controller=useRef(null),responseRef=useRef(null),userRef=useRef(null),follow=useRef(true),programmatic=useRef(false);
   const session=sessions.find(item=>item.id===active),messages=session?.messages||[];
   const latest=[...messages].reverse().find(item=>item.role==='assistant')?.result;
   const effectiveLang=mode==='auto'?resultLanguage(latest,lang):lang,t=copy[effectiveLang],c=chatCopy[effectiveLang];
   useEffect(()=>{document.documentElement.lang=effectiveLang;},[effectiveLang]);
   useEffect(()=>{setStorageError(!saveChats(sessions));},[sessions]);
-  useEffect(()=>{responseRef.current?.scrollIntoView({block:'nearest'});},[messages.length,busy]);
+  useEffect(()=>{let previous=window.scrollY;const track=()=>{if(!programmatic.current){if(window.scrollY<previous-4)follow.current=false;if(document.documentElement.scrollHeight-window.innerHeight-window.scrollY<120)follow.current=true;}previous=window.scrollY;};window.addEventListener('scroll',track,{passive:true});return()=>window.removeEventListener('scroll',track);},[]);
+  useEffect(()=>{if(!follow.current)return;const target=busy?userRef.current:responseRef.current;if(target){programmatic.current=true;target.scrollIntoView({block:'start',behavior:'instant'});const frame=requestAnimationFrame(()=>{programmatic.current=false;});return()=>{cancelAnimationFrame(frame);programmatic.current=false;};}},[active,messages.length,busy]);
   useEffect(()=>{const abort=new AbortController();fetch(`${API}/api/examples`,{signal:abort.signal}).then(r=>r.ok?r.json():[]).then(data=>setExamples(Array.isArray(data)?data:[])).catch(()=>{});return()=>{abort.abort();controller.current?.abort();};},[]);
   function append(items,title) {
     setSessions(previous=>{
@@ -45,10 +46,10 @@ function App() {
       return [{...existing,title:existing.messages.length?existing.title:title||existing.title,messages:[...existing.messages,...items].slice(-40)},...previous.filter(item=>item.id!==active)].slice(0,10);
     });
   }
-  function createChat(){if(busy)return;setActive(newChat().id);setQuestion('');}
+  function createChat(){if(busy)return;follow.current=true;setActive(newChat().id);setQuestion('');}
   async function submit(event){
     event.preventDefault();if(pending.current||!question.trim()||question.length>4000)return;
-    const text=question.trim();pending.current=true;setBusy(true);setQuestion('');append([{role:'user',text}],text.slice(0,70));
+    const text=question.trim();follow.current=true;pending.current=true;setBusy(true);setQuestion('');append([{role:'user',text}],text.slice(0,70));
     controller.current=new AbortController();const timeout=setTimeout(()=>controller.current.abort(),180000);
     try {
       const response=await fetch(`${API}/api/ask`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,language:mode}),signal:controller.current.signal});
@@ -61,17 +62,17 @@ function App() {
   return <div className="chat-shell">
     <aside className="chat-sidebar"><a className="brand" href="/"><span className="mark">U</span><span>UZEX<span className="brand-sub">AI Agent</span></span></a>
       <button className="new-chat" onClick={createChat} disabled={busy}>＋ {c.newChat}</button><p className="eyebrow">{c.history}</p>
-      <nav aria-label={c.history}>{sessions.filter(item=>item.messages.length).map(item=><button key={item.id} className={`history-item ${active===item.id?'selected':''}`} disabled={busy} onClick={()=>{setActive(item.id);setQuestion('');}}>◷ <span>{item.title}</span></button>)}</nav>
-      <div className="sidebar-bottom"><p>{c.local}</p><button className="clear-history" disabled={busy||!sessions.length} onClick={()=>{setSessions([]);setActive(newChat().id);setQuestion('');}}>{c.clear}</button></div>
+      <nav aria-label={c.history}>{sessions.filter(item=>item.messages.length).map(item=><button key={item.id} className={`history-item ${active===item.id?'selected':''}`} disabled={busy} onClick={()=>{follow.current=true;setActive(item.id);setQuestion('');}}>◷ <span>{item.title}</span></button>)}</nav>
+      <div className="sidebar-bottom"><p>{c.local}</p><button className="clear-history" disabled={busy||!sessions.length} onClick={()=>{setSessions([]);follow.current=true;setActive(newChat().id);setQuestion('');}}>{c.clear}</button></div>
     </aside>
     <main className="chat-main"><header className="chat-header"><div><strong>{c.workspace}</strong><span className="online-dot">● {c.readonly}</span></div><div className="languages">{['auto','uz','ru'].map(value=><button key={value} aria-pressed={mode===value} disabled={busy} onClick={()=>{setMode(value);if(value!=='auto')setLang(value);}}>{value==='auto'?'Auto':value==='uz'?'O‘zbekcha':'Русский'}</button>)}</div></header>
       <p className="disclaimer">{t.disclaimer}</p>{storageError&&<p className="notice">{c.storageError}</p>}
       <div className="conversation" role="log" aria-label={c.conversation} aria-busy={busy}>
       {!messages.length&&<div className="chat-welcome"><span className="welcome-mark">✳</span><p className="eyebrow">UZEX INTELLIGENCE</p><h1>{t.title}</h1><p>{t.intro}</p><div className="examples">{examples.map(item=><button key={item.id} onClick={()=>{setQuestion(item[effectiveLang]);document.getElementById('question')?.focus();}}>{item[effectiveLang]} <span>↗</span></button>)}</div></div>}
-      {messages.map((message,index)=>message.role==='user'?<div className="user-message" key={index}><span>{c.you}</span><p>{message.text}</p></div>:<div className="assistant-message" key={index}><div className="assistant-label"><span className="assistant-icon">U</span> UZEX AI <small>{message.result.status==='answered'?c.verified:t.statuses[message.result.status]||t.failure}</small></div><Answer result={message.result} lang={mode==='auto'?resultLanguage(message.result,effectiveLang):effectiveLang} latest={index===messages.length-1} responseRef={responseRef}/></div>)}
+      {messages.map((message,index)=>message.role==='user'?<div className="user-message" ref={index===messages.length-1?userRef:null} key={index}><span>{c.you}</span><p>{message.text}</p></div>:<div className="assistant-message" key={index}><div className="assistant-label"><span className="assistant-icon">U</span> UZEX AI <small>{message.result.status==='answered'?c.verified:t.statuses[message.result.status]||t.failure}</small></div><Answer result={message.result} lang={mode==='auto'?resultLanguage(message.result,effectiveLang):effectiveLang} latest={index===messages.length-1} responseRef={responseRef}/></div>)}
       {busy&&<div className="chat-loading" role="status"><span className="assistant-icon">U</span><span className="loading-dots">● ● ●</span> {t.loading}</div>}
       </div>
-      <div className="composer-wrap"><form className="chat-composer" onSubmit={submit}><label className="sr-only" htmlFor="question">{t.label}</label><textarea id="question" rows={2} value={question} onChange={event=>setQuestion(event.target.value)} placeholder={t.placeholder} maxLength={4000} disabled={busy}/><div className="composer-footer"><span>{c.independent} · {question.length}/4000</span><button className="primary" disabled={busy||!question.trim()}>{busy?'…':t.ask} ↑</button></div></form><p>{c.footer}</p></div>
+      <div className="composer-wrap"><form className="chat-composer" onSubmit={submit}><label className="sr-only" htmlFor="question">{t.label}</label><textarea id="question" rows={2} value={question} onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();if(!event.repeat&&!pending.current&&question.trim())event.currentTarget.form.requestSubmit();}}} onChange={event=>setQuestion(event.target.value)} placeholder={t.placeholder} maxLength={4000} disabled={busy}/><div className="composer-footer"><button className="primary" disabled={busy||!question.trim()}>{busy?'…':t.ask} ↑</button></div></form><p>{c.footer}</p></div>
     </main></div>;
 }
 createRoot(document.getElementById('root')).render(<App/>);
