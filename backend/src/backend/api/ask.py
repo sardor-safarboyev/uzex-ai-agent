@@ -12,6 +12,7 @@ from starlette.concurrency import run_in_threadpool
 from backend.api.availability import Availability, availability_message, requested_years
 from backend.api.summaries import count_summary
 from backend.database.errors import DatabaseAccessError
+from backend.interpretation.templates import template_plan, yearly_count_claim
 from backend.query.models import QueryExecution
 from backend.query.snapshot import InsufficientSnapshot
 from backend.semantic.models import ContractModel, QueryPlan
@@ -55,6 +56,13 @@ def response_language(question: str, override: str = "auto") -> Literal["uz", "r
     return "uz"
 
 
+class CountVerification(ContractModel):
+    year: int
+    claimed_count: Annotated[int, Field(strict=True, ge=0)]
+    actual_count: Annotated[int, Field(strict=True, ge=0)]
+    matches: bool
+
+
 class AskResponse(ContractModel):
     language: Literal["uz", "ru"]
     status: Literal[
@@ -64,6 +72,7 @@ class AskResponse(ContractModel):
     reason: str | None = None
     execution: QueryExecution | None = None
     availability: Availability | None = None
+    verification: CountVerification | None = None
     error: (
         Literal[
             "configuration",
@@ -269,6 +278,37 @@ async def ask(body: AskRequest, request: Request, response: Response) -> AskResp
             plan,
         )
         result = present(execution)
+        claim = yearly_count_claim(body.question)
+        if (
+            claim
+            and result.status == "answered"
+            and plan.request == template_plan(body.question).request
+        ):
+            actual = execution.result.outcome.data.rows[0][0]
+            result.verification = CountVerification(
+                year=claim[0],
+                claimed_count=claim[1],
+                actual_count=actual,
+                matches=claim[1] == actual,
+            )
+            count = f"{actual:,}".replace(",", " ")
+            if language == "uz":
+                verdict = (
+                    "Tasdiq to‘g‘ri." if claim[1] == actual else "Tasdiq noto‘g‘ri."
+                )
+                result.answer = (
+                    f"{verdict} {claim[0]}-yilda amalda {count} ta bitim qayd etilgan."
+                )
+            else:
+                verdict = (
+                    "Утверждение верно."
+                    if claim[1] == actual
+                    else "Утверждение неверно."
+                )
+                result.answer = (
+                    f"{verdict} В {claim[0]} году фактически "
+                    f"зарегистрировано {count} сделок."
+                )
         if result.status == "error":
             logger.warning("ask_failed stage=execution code=%s", result.error)
             result.answer = error_message(language, result.error)

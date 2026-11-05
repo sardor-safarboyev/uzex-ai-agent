@@ -153,6 +153,12 @@ export function formatAnswer(result, lang) {
     return nonanswerReasons[lang][result.reason] || t[result.status] || t.failure;
   }
   const data = result.execution?.result?.outcome?.data;
+  if (result.verification && data?.columns?.length === 1 && data.columns[0].field === 'deal_count' && data.rows?.length === 1) {
+    const {year, claimed_count} = result.verification;
+    const actual = data.rows[0][0], count = formatNumber(actual,lang);
+    const matches = String(claimed_count) === String(actual);
+    return lang === 'uz' ? `${matches ? 'Tasdiq to‘g‘ri.' : 'Tasdiq noto‘g‘ri.'} ${year}-yilda amalda ${count} ta bitim qayd etilgan.` : `${matches ? 'Утверждение верно.' : 'Утверждение неверно.'} В ${year} году фактически зарегистрировано ${count} сделок.`;
+  }
   const summary = analyticalSummary(data, result.execution?.scope?.request, lang);
   if (summary) return summary;
   if (data?.rows?.length === 1 && data.columns.length === 1) {
