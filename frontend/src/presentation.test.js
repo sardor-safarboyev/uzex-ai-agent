@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {resultLanguage, showCoverage, coverageLabel, title, formatAnswer} from './presentation.js';
+import {resultLanguage, showCoverage, coverageLabel, title, formatAnswer, columnHeader, columnHeaderUnit, partitionWarnings, formatCell} from './presentation.js';
 
 test('result language controls labels independently of UI language', () => {
   assert.equal(resultLanguage({language:'ru'}, 'uz'), 'ru');
@@ -37,4 +37,25 @@ test('availability messages use supplied metadata and stay bilingual', () => {
   assert.match(formatAnswer(result,'uz'),/2028-yil.*mavjud emas/);
   assert.match(formatAnswer(result,'ru'),/Данных.*2028/);
   assert.match(formatAnswer({...result,availability:{available_years:[2019,2020],missing_years:[2028]}},'ru'),/2019–2020/);
+});
+test('comparison headers use actual years and retain exact partial periods', () => {
+  const execution={scope:{request:{kind:'comparison',baseline:{start:'2024-01-01',end:'2024-12-31'},target:{start:'2025-01-01',end:'2025-12-31'}}}};
+  assert.equal(columnHeader({field:'baseline'},execution,'uz'),'2024-yil');
+  assert.equal(columnHeader({field:'target'},execution,'ru'),'2025 год');
+  assert.equal(columnHeader({field:'baseline'},{},'uz'),'Oldingi davr');
+  execution.scope.request.baseline.end='2024-06-30';
+  assert.equal(columnHeader({field:'baseline'},execution,'uz'),'2024-01-01 – 2024-06-30');
+});
+test('comparison count headers omit repeated units without losing currency or percentages', () => {
+  for(const field of ['baseline','target','absolute_difference']) assert.equal(columnHeaderUnit({field,metric:'deal_count',unit:'transactions'},'uz'),'');
+  assert.equal(columnHeaderUnit({field:'baseline',metric:'deal_value',currency:'UZS'},'uz'),'UZS');
+  assert.equal(columnHeaderUnit({field:'percentage_change',unit:'percent'},'uz'),'%');
+  assert.equal(formatCell('Пшеница продовольственная Класс 4 класс',{field:'product'},'uz'),'Пшеница продовольственная Класс 4 класс');
+});
+test('only routine notes move into evidence; important and unknown warnings stay visible', () => {
+  const warnings=['Currency/unit policy excluded 1327 source rows.','Text predicates use SQL NULL semantics; NULL values do not match eq/ne/in/not_in.','Ratios use Decimal precision 38, ROUND_HALF_EVEN; no FX conversion is performed.','The result limit was reduced to the configured server maximum.','Source NULL values were retained and were not imputed.','Unknown warning'];
+  const before=JSON.stringify(warnings), result=partitionWarnings(warnings);
+  assert.deepEqual(result.routine,warnings.slice(0,3));
+  assert.deepEqual(result.important,warnings.slice(3));
+  assert.equal(JSON.stringify(warnings),before);
 });
