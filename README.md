@@ -408,3 +408,14 @@ docker compose -f compose.yaml -f compose.web.yaml build
 
 Automated Groq calls are mocked. The real-data API smoke verifies all advertised
 example scopes and the 500,000 count, checking the snapshot fingerprint unchanged.
+
+### Response language and nonanswers
+
+The language selector defaults to **Auto**. Clear Uzbek/Russian question words
+select the answer language; ambiguous input falls back to Uzbek. Selecting
+O‘zbekcha or Русский explicitly overrides automatic detection. Result labels use
+the response language, while source values remain unchanged. Unsupported currency
+conversion explains the unverified rate-application and rounding rules; it never
+calculates a converted amount. Coverage is hidden when no query was evaluated.
+
+Frontend regression checks: `cd frontend && npm test && npm run build`.

@@ -1,6 +1,7 @@
 """Natural language -> validated logical plan -> deterministic read-only answer."""
 
 import asyncio
+import re
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Request, Response
@@ -15,7 +16,37 @@ router = APIRouter(prefix="/api", tags=["questions"])
 
 class AskRequest(ContractModel):
     question: Annotated[StrictStr, Field(min_length=1, max_length=4000)]
-    language: Literal["uz", "ru"] = "uz"
+    language: Literal["auto", "uz", "ru"] = "auto"
+
+
+def response_language(question: str, override: str = "auto") -> Literal["uz", "ru"]:
+    """Conservative cues from question words, never from source-name script alone."""
+    if override in {"uz", "ru"}:
+        return override
+    words = set(re.findall(r"[^\W\d_]+", question.lower()))
+    if words & {
+        "bitimlar",
+        "bitim",
+        "qancha",
+        "nechta",
+        "jami",
+        "битимлар",
+        "қанча",
+        "нечта",
+    }:
+        return "uz"
+    if words & {
+        "сколько",
+        "сделок",
+        "сделки",
+        "сумма",
+        "какова",
+        "покажи",
+        "переведи",
+        "конвертируй",
+    }:
+        return "ru"
+    return "uz"
 
 
 class AskResponse(ContractModel):
@@ -24,6 +55,7 @@ class AskResponse(ContractModel):
         "answered", "no_match", "insufficient_data", "ambiguous", "unsupported", "error"
     ]
     answer: str
+    reason: str | None = None
     execution: QueryExecution | None = None
     error: (
         Literal[
@@ -132,6 +164,26 @@ def present(execution: QueryExecution) -> AskResponse:
     status = result.outcome.status
     messages = MESSAGES[result.language]
     answer = messages[status].format(count=execution.returned_rows)
+    reason = None
+    scope = execution.scope
+    if scope:
+        request = scope.request
+        reason = getattr(request, "reason", None)
+        aggregate = getattr(request, "aggregate", request)
+        money = getattr(aggregate, "money", None)
+        if money and money.mode == "convert_to_uzs":
+            reason = "currency_conversion"
+
+    if status == "unsupported" and result.outcome.explanation in {
+        "Unverified source unit labels prevent applying "
+        "the requested unit policy safely.",
+        "The selected scope contains physical units "
+        "outside the semantic allowlist; their values "
+        "cannot be represented or combined.",
+    }:
+        reason = "unsupported_unit"
+    if status in {"unsupported", "ambiguous"}:
+        answer = REASONS[result.language].get(reason, answer)
     if status == "answered":
         data = result.outcome.data
         if len(data.rows) == len(data.columns) == 1:
@@ -141,10 +193,18 @@ def present(execution: QueryExecution) -> AskResponse:
                 label = messages.get(column.field, column.field)
                 suffix = " ".join(str(v) for v in (column.currency, column.unit) if v)
                 answer = f"{label}: {value}{' ' + suffix if suffix else ''}"
+                if column.field == "deal_count":
+                    count = f"{int(value):,}".replace(",", " ")
+                    answer = (
+                        f"Jami {count} ta bitim qayd etilgan."
+                        if result.language == "uz"
+                        else f"Всего зарегистрировано {count} сделок."
+                    )
     return AskResponse(
         language=result.language,
         status=status,
         answer=answer,
+        reason=reason,
         execution=execution,
         error=result.outcome.code if status == "error" else None,
     )
@@ -152,6 +212,7 @@ def present(execution: QueryExecution) -> AskResponse:
 
 @router.post("/ask", response_model=AskResponse)
 async def ask(body: AskRequest, request: Request, response: Response) -> AskResponse:
+    language = response_language(body.question, body.language)
     state = request.app.state
     # Reject saturation instead of accumulating an unbounded provider request queue.
     try:
@@ -159,24 +220,31 @@ async def ask(body: AskRequest, request: Request, response: Response) -> AskResp
     except TimeoutError:
         response.status_code = 503
         return AskResponse(
-            language=body.language,
+            language=language,
             status="error",
             error="busy",
-            answer=MESSAGES[body.language]["error"],
+            answer=MESSAGES[language]["error"],
         )
     try:
         interpretation = await state.interpreter.interpret(body.question)
         if interpretation.outcome == "error":
             response.status_code = 503
             return AskResponse(
-                language=body.language,
+                language=language,
                 status="error",
                 error=interpretation.error,
-                answer=MESSAGES[body.language]["error"],
+                answer=(
+                    RETRY[language]
+                    if interpretation.error == "rate_limit"
+                    else MESSAGES[language]["error"]
+                ),
             )
+        plan = QueryPlan.model_validate(
+            {**interpretation.plan.model_dump(), "language": language}
+        )
         execution = await run_in_threadpool(
             state.query_engine.execute,
-            interpretation.plan,
+            plan,
         )
         result = present(execution)
         if result.status == "error":
@@ -186,10 +254,58 @@ async def ask(body: AskRequest, request: Request, response: Response) -> AskResp
         # Do not return exception strings, provider bodies, SQL, paths or secrets.
         response.status_code = 503
         return AskResponse(
-            language=body.language,
+            language=language,
             status="error",
             error="internal_error",
-            answer=MESSAGES[body.language]["error"],
+            answer=MESSAGES[language]["error"],
         )
     finally:
         state.ask_slots.release()
+
+
+RETRY = {
+    "uz": "Xizmat band. Birozdan so‘ng qayta urinib ko‘ring.",
+    "ru": "Сервис занят. Повторите попытку позже.",
+}
+REASONS = {
+    "uz": {
+        "currency_conversion": (
+            "USD dan UZS ga o‘tkazish qo‘llanmaydi: kursni qo‘llash "
+            "va yaxlitlash qoidalari tasdiqlanmagan."
+        ),
+        "unverified_mapping": (
+            "Nom yoki identifikator mosligi tasdiqlanmagan. "
+            "Manbadagi aniq nomni ko‘rsating."
+        ),
+        "unavailable_data": "Bu so‘rov uchun kerakli ma’lumot mavjud emas.",
+        "unsupported_unit": (
+            "So‘ralgan o‘lchov birligi yoki birliklarni o‘tkazish "
+            "qoidasi tasdiqlanmagan."
+        ),
+        "unsupported_date": (
+            "Bu sana filtri qo‘llanmaydi. Aniq boshlanish va tugash "
+            "sanalarini ko‘rsating."
+        ),
+        "currency": "Qaysi valyuta kerak: USD yoki UZS?",
+        "unit": "Qaysi o‘lchov birligi kerak?",
+    },
+    "ru": {
+        "currency_conversion": (
+            "Перевод USD в UZS не поддерживается: правила "
+            "применения курса и округления не проверены."
+        ),
+        "unverified_mapping": (
+            "Соответствие названия или идентификатора не проверено. "
+            "Укажите точное название из источника."
+        ),
+        "unavailable_data": "Данные, необходимые для этого запроса, отсутствуют.",
+        "unsupported_unit": (
+            "Запрошенная единица или правила пересчёта единиц не проверены."
+        ),
+        "unsupported_date": (
+            "Этот фильтр дат не поддерживается. Укажите точные даты начала и окончания."
+        ),
+        "currency": "Какая валюта нужна: USD или UZS?",
+        "unit": "Какая единица измерения нужна?",
+    },
+}

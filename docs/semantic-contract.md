@@ -183,3 +183,16 @@ for every field mapping, source provenance and unresolved product/region/unit/FX
 semantics. USD rate candidates are retained, but applied rates and converted USD
 amounts remain NULL. Starting price remains separate from executed unit price,
 and blank delivered quantities do not become zero or payment completion.
+
+## Response presentation (agent quality fix)
+
+The ask API accepts language `auto` (default), `uz`, or `ru`. Explicit language
+overrides win; automatic mode uses conservative Uzbek/Russian question-word cues
+and falls back to Uzbek for ambiguous input. Source names and values are never
+translated. The effective language is applied to a revalidated plan before
+execution, including nonanswers and provider failures.
+
+Unsupported requests may identify `currency_conversion`, `unsupported_unit`,
+or `unsupported_date` in addition to the existing reasons. These are presentation
+restrictions, not additional executable capabilities. Currency conversion remains
+unsupported because rate application and rounding rules are unverified.
