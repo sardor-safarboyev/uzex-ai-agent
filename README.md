@@ -339,7 +339,7 @@ curl --fail http://127.0.0.1:8080/api/examples
 ```
 
 `POST /api/ask` accepts only question (1–4000 characters) and optional language
-(uz/ru). It calls Groq for a locally validated QueryPlan, then the unchanged
+(auto/uz/ru). It calls Groq for a locally validated QueryPlan, then the unchanged
 compiler/read-only QueryEngine. Answer text is a deterministic template over
 execution results; no model-generated answer or numerical claim is displayed.
 `execution` contains result columns (including currency/unit metadata), rows,
@@ -373,8 +373,8 @@ npm run dev
 Open **http://127.0.0.1:5173**. Vite proxies `/api` to localhost:8000.
 For a separate API origin set `VITE_API_BASE_URL` at frontend build time and set
 `UZEX_CORS_ORIGINS='["https://your-frontend.example"]'` on the backend. Never put
-secrets in `VITE_` variables. The UI toggle changes labels and examples; the
-question itself determines successful interpretation language.
+secrets in `VITE_` variables. Auto follows the detected response language; explicit Uzbek/Russian selections
+override it and also relabel existing results without another API request.
 
 ### Production deployment on a Docker host
 
@@ -419,3 +419,24 @@ conversion explains the unverified rate-application and rounding rules; it never
 calculates a converted amount. Coverage is hidden when no query was evaluated.
 
 Frontend regression checks: `cd frontend && npm test && npm run build`.
+
+
+### Presentation regression checks
+
+This demo uses synthetic transactions, not real or live UZEX trading data.
+The UI language toggle formats answers, units, warnings and coverage labels in
+Uzbek or Russian. Decimal strings are grouped without rounding or conversion to
+floating point; original API values remain accessible under the technical details.
+Detailed evidence is collapsed by default, while actual coverage counts and state
+remain visible. Source product names and official status labels are not translated.
+
+```sh
+cd frontend
+npm test
+npm run build
+```
+
+Tests use Node's built-in runner and mocked API responses. When Google Chrome is
+available, they also exercise language toggling, native evidence disclosure,
+mobile overflow, request deduplication and safe nonanswer states in headless Chrome.
+No live Groq calls are made by these regression tests.
