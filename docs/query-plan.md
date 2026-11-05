@@ -1,5 +1,11 @@
 # Query plan 1.1
 
+Explicit Uzbek yearly count claims ending in `Tasdiqla` use the existing yearly
+`deal_count` aggregate. The claimed number is never a plan filter or result.
+After successful execution, the API adds separate `verification` metadata and
+compares the claim with the actual database count. Full-string matching excludes
+additional instructions. Missing coverage and execution failures are not confirmations.
+
 The exact Uzbek calendar-year percentage-series template returns typed
 `unsupported_yearly_series` for a multi-year series: the contract supports one
 two-period comparison, not a batch of successive comparisons. An adjacent-year

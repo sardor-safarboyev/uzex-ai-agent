@@ -5,6 +5,17 @@ import re
 from backend.semantic.models import QueryPlan
 
 
+def yearly_count_claim(question: str) -> tuple[int, int] | None:
+    text = " ".join(question.lower().strip().rstrip("?.").split())
+    match = re.fullmatch(
+        r"((?:19|20)\d{2})-yilda "
+        r"([0-9]{1,12}|[0-9]{1,3}(?: [0-9]{3}){1,3}) "
+        r"ta bitim tuzilgan\. tasdiqla",
+        text,
+    )
+    return (int(match[1]), int(match[2].replace(" ", ""))) if match else None
+
+
 def template_plan(question: str) -> QueryPlan | None:
     text = " ".join(question.lower().strip().rstrip("?.").split())
     text = text.translate(str.maketrans({"‘": "'", "’": "'", "ʻ": "'", "`": "'"}))
@@ -19,6 +30,16 @@ def template_plan(question: str) -> QueryPlan | None:
 
     def clarify(reason, message):
         return {"kind": "clarification", "reason": reason, "question": message}
+
+    if claim := yearly_count_claim(question):
+        # The asserted count is deliberately absent from the executable plan.
+        return QueryPlan.model_validate(
+            {
+                "version": "1.1",
+                "language": language,
+                "request": aggregate(date_range=period(claim[0])),
+            }
+        )
 
     yearly = re.fullmatch(
         r"((?:19|20)\d{2})\s*[-–—]\s*((?:19|20)\d{2})-yillarda "
