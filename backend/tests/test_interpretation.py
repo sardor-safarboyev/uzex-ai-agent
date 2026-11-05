@@ -189,7 +189,7 @@ def test_provider_failures_are_bounded_and_safe(mode, expected, monkeypatch):
         ).interpret("Bitimlar soni?")
     )
     assert result.error == expected
-    assert len(calls) == (1 if mode == 401 else 3)
+    assert len(calls) == (1 if mode in {401, 429} else 3)
     assert "test-secret" not in result.model_dump_json()
 
 
