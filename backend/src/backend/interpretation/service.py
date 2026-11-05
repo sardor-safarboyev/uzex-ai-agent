@@ -18,6 +18,7 @@ from backend.interpretation.templates import template_plan
 from backend.query.compiler import UnsupportedPlan, compile_plan
 from backend.semantic.models import ContractModel, QueryPlan
 from backend.semantic.registry import METRICS, Currency, Dimension, LookupField, Unit
+from backend.timing import cooldown_skip, timing
 
 logger = logging.getLogger(__name__)
 
@@ -271,17 +272,22 @@ class Interpreter:
         language = "ru" if any(c in question.lower() for c in "ыэщц") else "uz"
 
         def failure(code):
-            if code == "invalid_response" and (
-                fallback := self._deterministic(question)
-            ):
-                return fallback
+            if code == "invalid_response":
+                with timing("template"):
+                    fallback = self._deterministic(question)
+                if fallback:
+                    return fallback
             return InterpretationResult(language=language, outcome="error", error=code)
 
         if not question.strip() or len(question) > 4000:
             return failure("invalid_input")
-        if deterministic := self._deterministic(question):
-            return deterministic
+        if not openrouter:
+            with timing("template"):
+                deterministic = self._deterministic(question)
+            if deterministic:
+                return deterministic
         if not openrouter and self.retry_after_seconds():
+            cooldown_skip()
             return failure("rate_limit")
         settings = self.settings
         key = settings.openrouter_api_key if openrouter else settings.groq_api_key
@@ -307,22 +313,39 @@ class Interpreter:
                 {"role": "user", "content": question},
             ],
         }
+        timeout = (
+            settings.openrouter_timeout_seconds
+            if openrouter
+            else settings.groq_timeout_seconds
+        )
         async with httpx.AsyncClient(
-            timeout=settings.groq_timeout_seconds,
+            timeout=timeout,
             transport=self.transport,
         ) as client:
-            retries = 0 if openrouter else settings.groq_max_retries
+            fallback_key = settings.openrouter_api_key
+            retries = (
+                0
+                if openrouter or (fallback_key and fallback_key.get_secret_value())
+                else settings.groq_max_retries
+            )
             for attempt in range(retries + 1):
                 if not openrouter and self.retry_after_seconds():
+                    cooldown_skip()
                     return failure("rate_limit")
                 try:
-                    response = await client.post(
-                        "https://openrouter.ai/api/v1/chat/completions"
-                        if openrouter
-                        else "https://api.groq.com/openai/v1/chat/completions",
-                        headers={"Authorization": "Bearer " + key.get_secret_value()},
-                        json=payload,
-                    )
+                    with timing(
+                        "openrouter" if openrouter else "groq", attempt=attempt + 1
+                    ):
+                        async with asyncio.timeout(timeout):
+                            response = await client.post(
+                                "https://openrouter.ai/api/v1/chat/completions"
+                                if openrouter
+                                else "https://api.groq.com/openai/v1/chat/completions",
+                                headers={
+                                    "Authorization": "Bearer " + key.get_secret_value()
+                                },
+                                json=payload,
+                            )
                     if response.status_code == 429:
                         if not openrouter:
                             self._cooldown(response.headers.get("Retry-After"))
@@ -333,7 +356,7 @@ class Interpreter:
                         return failure("provider_error")
                     else:
                         break
-                except httpx.TimeoutException:
+                except (httpx.TimeoutException, TimeoutError):
                     code = "timeout"
                 except httpx.RequestError:
                     code = "provider_error"

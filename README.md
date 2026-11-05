@@ -303,8 +303,19 @@ Default JSON object mode is validated locally with Pydantic. Set structured outp
 true only for a model supporting JSON schema (e.g. `openai/gpt-oss-20b`);
 best-effort schema mode preserves the existing schema's optional fields.
 See [Groq output modes](https://console.groq.com/docs/structured-outputs).
-No automatic fallback changes the selected model or relaxes validation.
-Only rate limits, server and network failures are retried, with bounded backoff;
+Groq remains primary. Optionally set `OPENROUTER_API_KEY` and
+`OPENROUTER_MODEL=nvidia/nemotron-3.5-lightning:free` to enable fallback through
+`https://openrouter.ai/api/v1/chat/completions`. Compose passes these variables
+to the backend (the web overlay inherits them). An empty fallback key disables it.
+Only a primary error triggers fallback, including an active Groq rate-limit
+cooldown or missing primary configuration; valid plans, clarifications and
+unsupported outcomes do not. OpenRouter gets exactly one chat completion using
+the original system/user messages, no reasoning-enable options or continuation.
+Both providers share the existing schema validation, grounding and compiler
+capability checks. Fallback errors remain typed failures, never model answers.
+No new SDK or Python dependency is required; both use the existing `httpx` client.
+Server and network failures on Groq are retried with bounded backoff; Groq 429s
+start the existing cooldown without immediate retries. OpenRouter is not retried;
 provider bodies, exceptions and credentials are never returned. Invalid/truncated
 JSON produces a safe error code. Clarification/unsupported prose uses fixed text.
 Prompt rules reduce injection risk; schema validation and compiler allowlists

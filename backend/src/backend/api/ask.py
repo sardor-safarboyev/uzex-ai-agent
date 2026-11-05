@@ -16,6 +16,7 @@ from backend.interpretation.templates import template_plan, yearly_count_claim
 from backend.query.models import QueryExecution
 from backend.query.snapshot import InsufficientSnapshot
 from backend.semantic.models import ContractModel, QueryPlan
+from backend.timing import timing
 
 router = APIRouter(prefix="/api", tags=["questions"])
 logger = logging.getLogger(__name__)
@@ -229,6 +230,11 @@ def present(execution: QueryExecution) -> AskResponse:
 
 @router.post("/ask", response_model=AskResponse)
 async def ask(body: AskRequest, request: Request, response: Response) -> AskResponse:
+    with timing("total", request=True):
+        return await _ask(body, request, response)
+
+
+async def _ask(body: AskRequest, request: Request, response: Response) -> AskResponse:
     language = response_language(body.question, body.language)
     state = request.app.state
     # Reject saturation instead of accumulating an unbounded provider request queue.
@@ -245,7 +251,8 @@ async def ask(body: AskRequest, request: Request, response: Response) -> AskResp
     try:
         years = requested_years(body.question)
         if years and state.settings.database_path is not None:
-            available = await run_in_threadpool(state.query_engine.dataset_years)
+            with timing("duckdb_coverage"):
+                available = await run_in_threadpool(state.query_engine.dataset_years)
             missing = sorted(years - set(available))
             if missing and available:
                 availability = Availability(
@@ -277,10 +284,8 @@ async def ask(body: AskRequest, request: Request, response: Response) -> AskResp
         plan = QueryPlan.model_validate(
             {**interpretation.plan.model_dump(), "language": language}
         )
-        execution = await run_in_threadpool(
-            state.query_engine.execute,
-            plan,
-        )
+        with timing("duckdb"):
+            execution = await run_in_threadpool(state.query_engine.execute, plan)
         result = present(execution)
         claim = yearly_count_claim(body.question)
         if (
