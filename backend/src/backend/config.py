@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     groq_max_retries: int = Field(default=2, ge=0, le=3)
     groq_structured_output: bool = False
 
+    production: bool = False
+    cors_origins: list[str] = Field(default_factory=list)
+    ask_max_concurrent: int = Field(default=4, ge=1, le=16)
+
     app_name: str = "UZEX AI Agent"
     database_path: Path | None = None
     database_metadata_enabled: bool = False

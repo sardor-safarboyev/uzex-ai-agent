@@ -23,7 +23,10 @@ def readiness(request: Request, response: Response) -> DatabaseReadiness:
 
 @router.get("/dev/database", response_model=DatabaseInspection, tags=["development"])
 def database_metadata(request: Request) -> DatabaseInspection:
-    if not request.app.state.settings.database_metadata_enabled:
+    if (
+        request.app.state.settings.production
+        or not request.app.state.settings.database_metadata_enabled
+    ):
         raise HTTPException(status_code=404, detail="Not Found")
     try:
         return service(request).inspect()
