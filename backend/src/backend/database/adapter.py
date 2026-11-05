@@ -15,6 +15,26 @@ from backend.database.errors import (
 )
 
 
+def connection_config(settings: Settings) -> dict:
+    """Engine settings shared by every connection in this process.
+
+    DuckDB refuses a second connection to the same file with a different
+    configuration, so all components (adapter, agent) must use this.
+    """
+    return {
+        "threads": settings.database_threads,
+        "memory_limit": f"{settings.database_memory_mb}MB",
+        "max_execution_time": settings.database_query_timeout_ms,
+        "max_temp_directory_size": "0MB",
+        "enable_external_access": False,
+        "lock_configuration": True,
+        "autoinstall_known_extensions": False,
+        "autoload_known_extensions": False,
+        "allow_community_extensions": False,
+        "allow_unsigned_extensions": False,
+    }
+
+
 class DuckDBAdapter:
     def __init__(self, settings: Settings):
         self._settings = settings
@@ -38,18 +58,7 @@ class DuckDBAdapter:
             connection = duckdb.connect(
                 database=str(path),
                 read_only=True,
-                config={
-                    "threads": self._settings.database_threads,
-                    "memory_limit": f"{self._settings.database_memory_mb}MB",
-                    "max_execution_time": self._settings.database_query_timeout_ms,
-                    "max_temp_directory_size": "0MB",
-                    "enable_external_access": False,
-                    "lock_configuration": True,
-                    "autoinstall_known_extensions": False,
-                    "autoload_known_extensions": False,
-                    "allow_community_extensions": False,
-                    "allow_unsigned_extensions": False,
-                },
+                config=connection_config(self._settings),
             )
             yield connection
         except (duckdb.Error, OSError) as error:

@@ -1,0 +1,45 @@
+{
+ "passed": 0,
+ "total": 2,
+ "rows": [
+  {
+   "id": "count_2024_ru",
+   "question": "Сколько сделок было заключено в 2024 году?",
+   "truth": [
+    "106647"
+   ],
+   "pass": false,
+   "why": "number 106647",
+   "seconds": 4.17,
+   "status": "error",
+   "verified": null,
+   "models": [
+    "groq:openai/gpt-oss-120b",
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Не удалось построить корректный запрос к данным. Переформулируйте вопрос, пожалуйста.",
+   "sql": [
+    "SELECT COUNT(*) AS total_deals FROM trades WHERE year = 2024;"
+   ]
+  },
+  {
+   "id": "turnover_2025_uz",
+   "question": "2025-yilda birjadagi jami savdo hajmi so'mda qancha bo'lgan?",
+   "truth": [
+    "55976577480267"
+   ],
+   "pass": false,
+   "why": "number 55976577480267",
+   "seconds": 42.4,
+   "status": "error",
+   "verified": null,
+   "models": [
+    "groq:qwen/qwen3.8-27b"
+   ],
+   "answer": "Ma'lumotlarga to'g'ri so'rov tuzib bo'lmadi. Savolni boshqacha ifodalab ko'ring.",
+   "sql": [
+    "SELECT \n    ROUND(SUM(amount_uzs), 2) AS total_amount_uzs,\n    COUNT(*) AS total_deals,\n    COUNT(*) FILTER (WHERE status = 'Аннулирован(Не оплачен)') AS cancelled_deals\nFROM trades\nWHERE year = 2025"
+   ]
+  }
+ ]
+}

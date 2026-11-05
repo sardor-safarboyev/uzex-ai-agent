@@ -1,0 +1,9 @@
+[Unit]
+Description=UZEX auto-deploy from the GitHub deploy branch
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/uzex/app/deploy/auto-deploy.sh
+TimeoutStartSec=900
