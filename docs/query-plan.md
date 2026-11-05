@@ -188,3 +188,9 @@ and read-only executor support the verified subset described in
 [query-execution.md](query-execution.md). Accepted plan shapes with unverified FX,
 product normalization, unmapped unit projections or unsupported numeric precision
 produce typed unsupported outcomes; validation never implies a guessed mapping.
+
+Unsupported reason vocabulary also includes `currency_conversion`,
+`unsupported_unit`, and `unsupported_date` for deterministic bilingual
+presentation. These reasons never authorize execution. The ask endpoint resolves
+its response language (automatic cues or explicit override) and revalidates the
+plan with that language before passing it to the unchanged compiler.

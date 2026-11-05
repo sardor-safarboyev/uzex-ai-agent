@@ -339,7 +339,7 @@ curl --fail http://127.0.0.1:8080/api/examples
 ```
 
 `POST /api/ask` accepts only question (1–4000 characters) and optional language
-(uz/ru). It calls Groq for a locally validated QueryPlan, then the unchanged
+(auto/uz/ru). It calls Groq for a locally validated QueryPlan, then the unchanged
 compiler/read-only QueryEngine. Answer text is a deterministic template over
 execution results; no model-generated answer or numerical claim is displayed.
 `execution` contains result columns (including currency/unit metadata), rows,
@@ -373,8 +373,8 @@ npm run dev
 Open **http://127.0.0.1:5173**. Vite proxies `/api` to localhost:8000.
 For a separate API origin set `VITE_API_BASE_URL` at frontend build time and set
 `UZEX_CORS_ORIGINS='["https://your-frontend.example"]'` on the backend. Never put
-secrets in `VITE_` variables. The UI toggle changes labels and examples; the
-question itself determines successful interpretation language.
+secrets in `VITE_` variables. Auto follows the detected response language; explicit Uzbek/Russian selections
+override it and also relabel existing results without another API request.
 
 ### Production deployment on a Docker host
 
@@ -408,6 +408,17 @@ docker compose -f compose.yaml -f compose.web.yaml build
 
 Automated Groq calls are mocked. The real-data API smoke verifies all advertised
 example scopes and the 500,000 count, checking the snapshot fingerprint unchanged.
+
+### Response language and nonanswers
+
+The language selector defaults to **Auto**. Clear Uzbek/Russian question words
+select the answer language; ambiguous input falls back to Uzbek. Selecting
+O‘zbekcha or Русский explicitly overrides automatic detection. Result labels use
+the response language, while source values remain unchanged. Unsupported currency
+conversion explains the unverified rate-application and rounding rules; it never
+calculates a converted amount. Coverage is hidden when no query was evaluated.
+
+Frontend regression checks: `cd frontend && npm test && npm run build`.
 
 
 ### Presentation regression checks

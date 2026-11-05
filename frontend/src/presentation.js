@@ -13,7 +13,7 @@ export const copy = {
     invalid: 'Savol 1–4000 belgidan iborat bo‘lishi kerak.', verify: 'Manba asosida hisoblangan',
     provenance: 'Qator manbasi', period: 'Davr qamrovi', failure: 'So‘rov bajarilmadi.',
     statuses: {answered:'Hisoblandi', no_match:'Mos bitim yo‘q', ambiguous:'Aniqlashtirish kerak', unsupported:'Qo‘llanmaydi', insufficient_data:'Ma’lumot yetarli emas', error:'Xatolik'},
-    errors: {configuration:'Groq sozlamalarini tekshiring.', provider_error:'Til xizmati mavjud emas. Model va hisob sozlamalarini tekshiring.', rate_limit:'Xizmat band. Birozdan so‘ng urinib ko‘ring.', timeout:'Til xizmati javob bermadi. Qayta urinib ko‘ring.', invalid_response:'Savolni boshqacha ifodalab ko‘ring.', busy:'Server band. Birozdan so‘ng urinib ko‘ring.', execution_failed:'Ma’lumotlar bazasiga so‘rov bajarilmadi.', internal_error:'So‘rovni xavfsiz bajarib bo‘lmadi.'},
+    errors: {configuration:'Xizmat hozir mavjud emas.', provider_error:'Til xizmati mavjud emas. Keyinroq urinib ko‘ring.', rate_limit:'Xizmat band. Birozdan so‘ng urinib ko‘ring.', timeout:'Til xizmati javob bermadi. Qayta urinib ko‘ring.', invalid_response:'Savolni boshqacha ifodalab ko‘ring.', busy:'Server band. Birozdan so‘ng urinib ko‘ring.', execution_failed:'Ma’lumotlar bazasiga so‘rov bajarilmadi.', internal_error:'So‘rovni xavfsiz bajarib bo‘lmadi.'},
   },
   ru: {
     kicker: 'ПОМОЩНИК ПО ТОРГОВЫМ ДАННЫМ', title: 'От вопроса к точному результату.',
@@ -29,7 +29,7 @@ export const copy = {
     invalid: 'Вопрос должен содержать от 1 до 4000 символов.', verify: 'Рассчитано по источникам',
     provenance: 'Источник строки', period: 'Охват периодов', failure:'Запрос не выполнен.',
     statuses: {answered:'Рассчитано', no_match:'Сделки не найдены', ambiguous:'Нужно уточнение', unsupported:'Не поддерживается', insufficient_data:'Недостаточно данных', error:'Ошибка'},
-    errors: {configuration:'Проверьте настройки Groq.', provider_error:'Языковой сервис недоступен. Проверьте модель и настройки аккаунта.', rate_limit:'Сервис занят. Повторите попытку позже.', timeout:'Языковой сервис не ответил. Попробуйте снова.', invalid_response:'Попробуйте переформулировать вопрос.', busy:'Сервер занят. Повторите попытку позже.', execution_failed:'Не удалось выполнить запрос к базе.', internal_error:'Не удалось безопасно выполнить запрос.'},
+    errors: {configuration:'Сервис сейчас недоступен.', provider_error:'Языковой сервис недоступен. Попробуйте позже.', rate_limit:'Сервис занят. Повторите попытку позже.', timeout:'Языковой сервис не ответил. Попробуйте снова.', invalid_response:'Попробуйте переформулировать вопрос.', busy:'Сервер занят. Повторите попытку позже.', execution_failed:'Не удалось выполнить запрос к базе.', internal_error:'Не удалось безопасно выполнить запрос.'},
   },
 };
 const labels = {
@@ -140,7 +140,10 @@ export function formatCell(value, column, lang) {
 }
 export function formatAnswer(result, lang) {
   const t = copy[lang];
-  if (result.status !== 'answered') return t[result.status] || t.failure;
+  if (result.status !== 'answered') {
+    if (result.status === 'error') return t.errors[result.error] || t.error;
+    return nonanswerReasons[lang][result.reason] || t[result.status] || t.failure;
+  }
   const data = result.execution?.result?.outcome?.data;
   if (data?.rows?.length === 1 && data.columns.length === 1) {
     const column = data.columns[0], value = data.rows[0][0];
@@ -171,3 +174,37 @@ export function formatWarning(text, lang) {
   if (match) return lang === 'uz' ? `Valyuta yoki birlik siyosati ${formatNumber(match[1],lang)} ta manba qatorini chiqarib tashlagan.` : `Валютная политика или политика единиц исключила ${formatNumber(match[1],lang)} строк источника.`;
   return copy[lang].extraWarning;
 }
+
+export function resultLanguage(result, fallback) {
+  return ['uz', 'ru'].includes(result?.language) ? result.language : fallback;
+}
+export function showCoverage(coverage) {
+  return coverage?.evaluated_rows != null;
+}
+export function coverageLabel(state, language) {
+  return ({
+    uz: {complete:'To‘liq', partial:'Qisman', unknown:'Aniqlanmagan', unavailable:'Mavjud emas'},
+    ru: {complete:'Полный', partial:'Частичный', unknown:'Не определён', unavailable:'Недоступен'},
+  })[language][state] || '—';
+}
+
+const nonanswerReasons = {
+  "uz": {
+    "currency_conversion": "USD dan UZS ga o‘tkazish qo‘llanmaydi: kursni qo‘llash va yaxlitlash qoidalari tasdiqlanmagan.",
+    "unverified_mapping": "Nom yoki identifikator mosligi tasdiqlanmagan. Manbadagi aniq nomni ko‘rsating.",
+    "unavailable_data": "Bu so‘rov uchun kerakli ma’lumot mavjud emas.",
+    "unsupported_unit": "So‘ralgan o‘lchov birligi yoki birliklarni o‘tkazish qoidasi tasdiqlanmagan.",
+    "unsupported_date": "Bu sana filtri qo‘llanmaydi. Aniq boshlanish va tugash sanalarini ko‘rsating.",
+    "currency": "Qaysi valyuta kerak: USD yoki UZS?",
+    "unit": "Qaysi o‘lchov birligi kerak?"
+  },
+  "ru": {
+    "currency_conversion": "Перевод USD в UZS не поддерживается: правила применения курса и округления не проверены.",
+    "unverified_mapping": "Соответствие названия или идентификатора не проверено. Укажите точное название из источника.",
+    "unavailable_data": "Данные, необходимые для этого запроса, отсутствуют.",
+    "unsupported_unit": "Запрошенная единица или правила пересчёта единиц не проверены.",
+    "unsupported_date": "Этот фильтр дат не поддерживается. Укажите точные даты начала и окончания.",
+    "currency": "Какая валюта нужна: USD или UZS?",
+    "unit": "Какая единица измерения нужна?"
+  }
+};

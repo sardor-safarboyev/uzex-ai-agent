@@ -107,6 +107,16 @@ def test_transaction_counts_by_year(year):
     expected = reference(
         "SELECT count(*) FROM raw.deals WHERE source_file = ?", [f"deals_{year}.csv"]
     )[0][0]
+    assert (
+        expected
+        == {2022: 84299, 2023: 93985, 2024: 106647, 2025: 115763, 2026: 99306}[year]
+    )
+    execution = execute(
+        request(date_range={"start": f"{year}-01-01", "end": f"{year}-12-31"})
+    )
+    assert execution.result.coverage.matched_rows == expected
+    assert execution.scope.request.date_range.start.year == year
+    assert execution.result.evidence
     actual = answer(
         request(date_range={"start": f"{year}-01-01", "end": f"{year}-12-31"})
     )
@@ -128,11 +138,9 @@ def test_official_statuses_and_delivery_are_independent():
     )
     assert paid.result.outcome.status == "insufficient_data"
     completed = reference(
-        
-            'SELECT count(*) FROM raw.deals WHERE "Поставлено" '
-            "<> '' AND cast(\"Поставлено\" AS DECIMAL(38,10)) "
-            '= cast("Количество" AS DECIMAL(38,10))'
-        
+        'SELECT count(*) FROM raw.deals WHERE "Поставлено" '
+        "<> '' AND cast(\"Поставлено\" AS DECIMAL(38,10)) "
+        '= cast("Количество" AS DECIMAL(38,10))'
     )[0][0]
     assert answer(
         request(
@@ -163,11 +171,9 @@ def test_contract_currency_joins_and_source_amounts():
     )
     assert actual == [list(row) for row in expected]
     joined = reference(
-        
-            "SELECT count(*) FROM raw.deals d JOIN "
-            'raw.contracts c ON d."Номер контракта" = c."Номер '
-            'контракта"'
-        
+        "SELECT count(*) FROM raw.deals d JOIN "
+        'raw.contracts c ON d."Номер контракта" = c."Номер '
+        'контракта"'
     )[0][0]
     assert joined == answer(request())[0][0] == 500000
     OBSERVED.append({"check": "exact_contract_join_rows", "actual": joined})
@@ -189,11 +195,9 @@ def test_usd_rate_evidence_and_explicit_conversion_rejection():
     )
     assert unsupported.result.outcome.status == "unsupported"
     assert reference(
-        
-            "SELECT count(*) FROM main.deals WHERE currency = "
-            "'USD' AND (fx_rate_used IS NOT NULL OR "
-            "transaction_amount_uzs IS NOT NULL)"
-        
+        "SELECT count(*) FROM main.deals WHERE currency = "
+        "'USD' AND (fx_rate_used IS NOT NULL OR "
+        "transaction_amount_uzs IS NOT NULL)"
     ) == [(0,)]
     OBSERVED.append({"check": "USD_date_rate_coverage", "actual": matched})
     OBSERVED.append(
@@ -227,10 +231,8 @@ def test_exact_unit_aware_mass_conversion(target):
 
 def test_unsupported_unit_rows_still_support_count_and_money():
     name = reference(
-        
-            'SELECT min("Наименование товара") FROM raw.deals '
-            "WHERE \"Единица измерения\" = 'метр'"
-        
+        'SELECT min("Наименование товара") FROM raw.deals '
+        "WHERE \"Единица измерения\" = 'метр'"
     )[0][0]
     count = reference(
         'SELECT count(*) FROM raw.deals WHERE "Наименование товара" = ?', [name]
@@ -315,11 +317,9 @@ def test_missing_values_exact_lookup_and_no_match():
         == "insufficient_data"
     )
     identifier = reference(
-        
-            'SELECT "Номер сделки" FROM raw.deals WHERE '
-            '"Поставлено" = \'\' ORDER BY "Номер сделки" LIMIT '
-            "1"
-        
+        'SELECT "Номер сделки" FROM raw.deals WHERE '
+        '"Поставлено" = \'\' ORDER BY "Номер сделки" LIMIT '
+        "1"
     )[0][0]
     lookup = QueryPlan.model_validate(
         {

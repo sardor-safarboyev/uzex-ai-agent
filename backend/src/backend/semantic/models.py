@@ -334,7 +334,14 @@ class ClarificationRequest(ContractModel):
 
 class UnsupportedRequest(ContractModel):
     kind: Literal["unsupported"]
-    reason: Literal["unsupported_operation", "unverified_mapping", "unavailable_data"]
+    reason: Literal[
+        "unsupported_operation",
+        "unverified_mapping",
+        "unavailable_data",
+        "currency_conversion",
+        "unsupported_unit",
+        "unsupported_date",
+    ]
     explanation: Text
 
 

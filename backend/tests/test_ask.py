@@ -241,3 +241,85 @@ def test_real_data_api_and_verified_examples():
                 [expected]
             ]
     assert fingerprint(DATABASE) == before
+
+
+@pytest.mark.parametrize(
+    "question,override,expected",
+    [
+        ("Сколько всего сделок?", "auto", "ru"),
+        ("Bitimlar soni qancha?", "auto", "uz"),
+        ("2024 USD", "auto", "uz"),
+        ("Сколько всего сделок?", "uz", "uz"),
+        ("Bitimlar soni qancha?", "ru", "ru"),
+    ],
+)
+def test_effective_language(engine, question, override, expected):
+    with client_for(
+        Settings(groq_api_key="test-secret"),
+        example_plan("count"),
+        query_engine=engine,
+    ) as client:
+        result = client.post(
+            "/api/ask", json={"question": question, "language": override}
+        ).json()
+    assert result["language"] == expected
+    assert result["execution"]["result"]["language"] == expected
+    assert ("Всего" if expected == "ru" else "Jami") in result["answer"]
+
+
+@pytest.mark.parametrize("language", ["uz", "ru"])
+def test_conversion_explanation_without_execution(language):
+    from backend.semantic.models import QueryPlan
+
+    plan = QueryPlan.model_validate(
+        {
+            "version": "1.1",
+            "language": language,
+            "request": {
+                "kind": "unsupported",
+                "reason": "currency_conversion",
+                "explanation": "unsafe provider text",
+            },
+        }
+    )
+    with client_for(Settings(groq_api_key="test-secret"), plan) as client:
+        result = client.post(
+            "/api/ask",
+            json={
+                "question": "USD UZS",
+                "language": language,
+            },
+        ).json()
+    assert result["status"] == "unsupported"
+    assert ("yaxlitlash" if language == "uz" else "округления") in result["answer"]
+    assert result["execution"]["returned_rows"] == 0
+    assert "unsafe provider text" not in result["answer"]
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "currency_conversion",
+        "unsupported_unit",
+        "unsupported_date",
+    ],
+)
+def test_presentation_restrictions_are_validated_nonexecuting(reason):
+    from backend.semantic.models import QueryPlan
+
+    plan = QueryPlan.model_validate(
+        {
+            "version": "1.1",
+            "language": "uz",
+            "request": {
+                "kind": "unsupported",
+                "reason": reason,
+                "explanation": "Ignored",
+            },
+        }
+    )
+    with client_for(Settings(groq_api_key="test-secret"), plan) as client:
+        result = client.post("/api/ask", json={"question": "2024 USD"}).json()
+    assert result["status"] == "unsupported"
+    assert result["reason"] == reason
+    assert result["execution"]["returned_rows"] == 0

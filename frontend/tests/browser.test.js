@@ -14,23 +14,24 @@ const harness = String.raw`<!doctype html><html><head><meta charset="UTF-8"><met
 window.addEventListener('error',event=>document.getElementById('test-status').textContent='failed: '+event.message);
 window.addEventListener('unhandledrejection',event=>document.getElementById('test-status').textContent='failed: '+event.reason?.message);
 const initial={language:'uz',status:'answered',answer:'Bitimlar soni: 500000 transactions',error:null,execution:{returned_rows:1,effective_limit:100,truncated:false,warnings:['Source NULL values were retained and were not imputed.'],provenance:[{row:1,source_file:'deals_2024.csv',source_record:123}],periods:[],scope:{language:'uz',request:{kind:'aggregate',metrics:['deal_count']}},result:{coverage:{state:'complete',matched_rows:500000,evaluated_rows:500000,issues:[]},evidence:[{source_id:'deals_2024.csv',dataset_version:'a'.repeat(256),logical_fields:['deal_count'],mapping_verified:true}],outcome:{status:'answered',data:{columns:[{field:'deal_count',unit:'transactions'}],rows:[[500000]]}}}}};
-let payload=initial, calls=0, release=null;
+let payload=initial, calls=0, release=null, requestBody=null;
 const original=JSON.stringify(initial);
 window.fetch=async (url,options={})=>{
  if(String(url).endsWith('/api/examples')) return new Response(JSON.stringify([{id:'count',uz:'Bitimlar soni?',ru:'Сколько сделок?'}]),{status:200});
- if(String(url).endsWith('/api/ask')) {calls++; const snapshot=structuredClone(payload);if(release===true)await new Promise(resolve=>release=resolve);return new Response(JSON.stringify(snapshot),{status:snapshot.error?503:200});}
+ if(String(url).endsWith('/api/ask')) {requestBody=JSON.parse(options.body);calls++; const snapshot=structuredClone(payload);if(release===true)await new Promise(resolve=>release=resolve);return new Response(JSON.stringify(snapshot),{status:snapshot.error?503:200});}
  throw new Error('Unexpected network request');
 };
 await import('/src/main.jsx');
 const delay=()=>new Promise(resolve=>setTimeout(resolve,20));
 async function waitFor(check){for(let i=0;i<150;i++){if(check())return;await delay();}throw Error('Timed out waiting for UI');}
 function check(value,message){if(!value)throw Error(message);}
-function language(value){document.querySelectorAll('.languages button')[value==='uz'?0:1].click();}
+function language(value){[...document.querySelectorAll('.languages button')].find(button=>button.textContent===({auto:'Auto',uz:'O‘zbekcha',ru:'Русский'})[value]).click();}
 async function ask(){document.querySelector('.examples button').click();await delay();document.querySelector('form').requestSubmit();await delay();await waitFor(()=>document.querySelector('.answer')&&document.querySelector('.result-card').getAttribute('aria-busy')==='false');}
 try {
  await waitFor(()=>document.querySelector('.examples button'));
  check(document.querySelector('.disclaimer').textContent.includes('sintetik'),'Uzbek disclaimer');
  await ask();
+ check(requestBody.language==='auto','Auto sent to backend');
  check(document.querySelector('.answer').textContent==='Jami 500 000 ta bitim qayd etilgan.','Natural Uzbek answer');
  check(document.activeElement===document.querySelector('.result-card'),'Result receives focus');
  check(document.querySelector('.result-card').getBoundingClientRect().top>=0,'Result scrolled into view');
@@ -56,9 +57,11 @@ try {
  check(document.querySelector('.coverage').textContent.includes('Частичный'),'Partial coverage accurate');
  check(!document.querySelector('.verified'),'Partial coverage has no verified badge');
  check(!document.querySelector('.coverage').textContent.includes('Полный'),'No false complete coverage');
- payload={...initial,status:'unsupported',execution:null};await ask();
+ payload={...initial,status:'unsupported',reason:'currency_conversion',execution:null};await ask();
+ check(requestBody.language==='ru','Explicit Russian override sent');
+ check(document.querySelector('.answer').textContent.includes('округления'),'Specific conversion limitation preserved');
  check(document.querySelector('.answer').textContent.includes('не поддерживается'),'Unsupported state preserved');
- language('uz');await delay();check(document.querySelector('.answer').textContent.includes('qo‘llanmaydi'),'Unsupported toggles');
+ language('uz');await delay();check(document.querySelector('.answer').textContent.includes('yaxlitlash'),'Specific unsupported reason toggles');
  payload={...initial,status:'ambiguous',execution:null};await ask();
  check(document.querySelector('.answer').textContent.includes('aniqlashtiring'),'Clarification preserved');
  payload={...initial,status:'error',error:'rate_limit',execution:null};await ask();
@@ -66,6 +69,15 @@ try {
  language('ru');await delay();check(document.querySelector('[role=alert]').textContent.includes('Сервис занят'),'Rate limit toggles');
  payload={...initial,status:'error',error:'provider_error',execution:null};await ask();
  check(document.querySelector('[role=alert]').textContent.includes('Языковой сервис недоступен'),'Provider error preserved');
+ language('auto');await delay();
+ payload={...initial,language:'ru'};await ask();
+ check(requestBody.language==='auto','Automatic mode restored');
+ check(document.documentElement.lang==='ru','Automatic response language updates page');
+ check(document.querySelector('.answer').textContent.includes('Всего'),'Automatic Russian answer');
+ check(document.querySelector('th').textContent.includes('Количество сделок'),'Automatic Russian table heading');
+ payload={...initial,status:'unsupported',reason:'unsupported_unit',execution:{...initial.execution,result:{...initial.execution.result,coverage:{state:'unknown',evaluated_rows:null,matched_rows:null,issues:[]},outcome:{status:'unsupported'}}}};await ask();
+ check(!document.querySelector('.coverage'),'No misleading coverage when not executed');
+ language('ru');await delay();
  payload=initial;release=true;
  document.querySelector('.examples button').click();await delay();
  const form=document.querySelector('form'), before=calls;
@@ -81,7 +93,7 @@ try {
 } catch(error){document.getElementById('test-status').textContent='failed: '+error.stack;}
 </script></body></html>`;
 
-for (const [name,width,height] of [['mobile',390,844],['laptop',1366,900]]) {
+for (const [name,width,height] of [['mobile narrow',320,740],['mobile',390,844],['laptop',1366,900]]) {
   test(`mocked UI in Chrome: ${name}`, {skip:!available,timeout:45000}, async () => {
     const server=await createServer({root:fileURLToPath(new URL('..',import.meta.url)),configFile:false,plugins:[{name:'mocked-presentation-tests',configureServer(server){server.middlewares.use('/__presentation_test',(_req,res)=>{res.setHeader('Content-Type','text/html');res.end(harness);});}}],server:{host:'127.0.0.1',port:0},logLevel:'silent'});
     const profile=await mkdtemp(join(tmpdir(),'uzex-presentation-'));
@@ -111,7 +123,7 @@ for (const [name,width,height] of [['mobile',390,844],['laptop',1366,900]]) {
           if(message.id&&callbacks.has(message.id)){callbacks.get(message.id)(message);callbacks.delete(message.id);}
         });
         const send=(method,params={})=>new Promise(resolve=>{const key=++id;callbacks.set(key,resolve);socket.send(JSON.stringify({id:key,method,params}));});
-        await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:name==='mobile'});
+        await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:name.startsWith('mobile')});
         await send('Page.navigate',{url:`http://127.0.0.1:${port}/__presentation_test`});
         let status;
         for(let i=0;i<200;i++){

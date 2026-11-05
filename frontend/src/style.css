@@ -7,3 +7,4 @@
 .result-card h3{font-size:13px;font-weight:600}details>summary{padding:5px 0;min-height:32px;font-weight:550}
 .table-wrap{max-width:100%;overscroll-behavior-x:contain}pre{max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:850px){textarea{font-size:16px}.primary,.languages button{min-height:44px}.languages button{min-width:70px}.coverage{gap:18px}th,td{padding:10px}details>summary{min-height:44px}.disclaimer{font-size:10px}.result-heading{flex-wrap:wrap}}
+@media(max-width:480px){header{height:auto;min-height:84px;flex-wrap:wrap;gap:12px;padding:16px 0}}
