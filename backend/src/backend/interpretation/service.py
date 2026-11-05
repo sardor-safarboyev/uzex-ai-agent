@@ -1,4 +1,4 @@
-"""Bounded async Groq transport and validated semantic interpretation."""
+"""Groq-first interpretation with one optional, equally validated fallback."""
 
 import asyncio
 import json
@@ -252,6 +252,21 @@ class Interpreter:
         )
 
     async def interpret(self, question: str) -> InterpretationResult:
+        primary = await self._interpret_provider(question)
+        key = self.settings.openrouter_api_key
+        if (
+            primary.outcome != "error"
+            or primary.error == "invalid_input"
+            or not key
+            or not key.get_secret_value()
+        ):
+            return primary
+        logger.warning("interpretation_fallback primary_code=%s", primary.error)
+        return await self._interpret_provider(question, openrouter=True)
+
+    async def _interpret_provider(
+        self, question: str, *, openrouter: bool = False
+    ) -> InterpretationResult:
         # A fallback only for failures; successful language comes from the plan.
         language = "ru" if any(c in question.lower() for c in "ыэщц") else "uz"
 
@@ -266,13 +281,14 @@ class Interpreter:
             return failure("invalid_input")
         if deterministic := self._deterministic(question):
             return deterministic
-        if self.retry_after_seconds():
+        if not openrouter and self.retry_after_seconds():
             return failure("rate_limit")
         settings = self.settings
-        if not settings.groq_api_key or not settings.groq_api_key.get_secret_value():
+        key = settings.openrouter_api_key if openrouter else settings.groq_api_key
+        if not key or not key.get_secret_value():
             return failure("configuration")
         response_format = {"type": "json_object"}
-        if settings.groq_structured_output:
+        if settings.groq_structured_output and not openrouter:
             response_format = {
                 "type": "json_schema",
                 "json_schema": {
@@ -282,7 +298,7 @@ class Interpreter:
                 },
             }
         payload = {
-            "model": settings.groq_model,
+            "model": settings.openrouter_model if openrouter else settings.groq_model,
             "temperature": 0,
             "max_tokens": 3000,
             "response_format": response_format,
@@ -295,20 +311,21 @@ class Interpreter:
             timeout=settings.groq_timeout_seconds,
             transport=self.transport,
         ) as client:
-            for attempt in range(settings.groq_max_retries + 1):
-                if self.retry_after_seconds():
+            retries = 0 if openrouter else settings.groq_max_retries
+            for attempt in range(retries + 1):
+                if not openrouter and self.retry_after_seconds():
                     return failure("rate_limit")
                 try:
                     response = await client.post(
-                        "https://api.groq.com/openai/v1/chat/completions",
-                        headers={
-                            "Authorization": "Bearer "
-                            + settings.groq_api_key.get_secret_value()
-                        },
+                        "https://openrouter.ai/api/v1/chat/completions"
+                        if openrouter
+                        else "https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": "Bearer " + key.get_secret_value()},
                         json=payload,
                     )
                     if response.status_code == 429:
-                        self._cooldown(response.headers.get("Retry-After"))
+                        if not openrouter:
+                            self._cooldown(response.headers.get("Retry-After"))
                         return failure("rate_limit")
                     if response.status_code >= 500:
                         code = "provider_error"
@@ -320,7 +337,7 @@ class Interpreter:
                     code = "timeout"
                 except httpx.RequestError:
                     code = "provider_error"
-                if attempt == settings.groq_max_retries:
+                if attempt == retries:
                     return failure(code)
                 await asyncio.sleep(min(0.25 * 2**attempt, 1))
         try:
