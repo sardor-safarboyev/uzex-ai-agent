@@ -3,7 +3,11 @@
 import asyncio
 import json
 import logging
+import math
 import re
+import time
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Literal, Self
 
 import httpx
@@ -209,26 +213,61 @@ class Interpreter:
     def __init__(self, settings: Settings, *, transport=None):
         self.settings = settings
         self.transport = transport
+        self._retry_until = 0.0
+
+    def retry_after_seconds(self) -> int:
+        return max(0, math.ceil(self._retry_until - time.monotonic()))
+
+    def _cooldown(self, header: str | None) -> None:
+        seconds = 30.0
+        if header:
+            try:
+                seconds = float(header)
+            except ValueError:
+                try:
+                    seconds = (
+                        parsedate_to_datetime(header) - datetime.now(UTC)
+                    ).total_seconds()
+                except (ValueError, TypeError, OverflowError):
+                    pass
+        if not math.isfinite(seconds):
+            seconds = 30.0
+        self._retry_until = max(
+            self._retry_until, time.monotonic() + min(3600, max(1, seconds))
+        )
+
+    @staticmethod
+    def _deterministic(question: str) -> InterpretationResult | None:
+        plan = template_plan(question)
+        if plan is None:
+            return None
+        compile_plan(plan)
+        kind = plan.request.kind
+        if kind == "clarification":
+            plan = fixed_plan(plan.language, kind, plan.request.reason)
+        return InterpretationResult(
+            language=plan.language,
+            outcome=kind if kind in {"clarification", "unsupported"} else "plan",
+            plan=plan,
+        )
 
     async def interpret(self, question: str) -> InterpretationResult:
         # A fallback only for failures; successful language comes from the plan.
         language = "ru" if any(c in question.lower() for c in "ыэщц") else "uz"
 
         def failure(code):
+            if code == "invalid_response" and (
+                fallback := self._deterministic(question)
+            ):
+                return fallback
             return InterpretationResult(language=language, outcome="error", error=code)
 
         if not question.strip() or len(question) > 4000:
             return failure("invalid_input")
-        if plan := template_plan(question):
-            compile_plan(plan)
-            kind = plan.request.kind
-            if kind == "clarification":
-                plan = fixed_plan(plan.language, kind, plan.request.reason)
-            return InterpretationResult(
-                language=plan.language,
-                outcome=kind if kind in {"clarification", "unsupported"} else "plan",
-                plan=plan,
-            )
+        if deterministic := self._deterministic(question):
+            return deterministic
+        if self.retry_after_seconds():
+            return failure("rate_limit")
         settings = self.settings
         if not settings.groq_api_key or not settings.groq_api_key.get_secret_value():
             return failure("configuration")
@@ -257,6 +296,8 @@ class Interpreter:
             transport=self.transport,
         ) as client:
             for attempt in range(settings.groq_max_retries + 1):
+                if self.retry_after_seconds():
+                    return failure("rate_limit")
                 try:
                     response = await client.post(
                         "https://api.groq.com/openai/v1/chat/completions",
@@ -266,12 +307,11 @@ class Interpreter:
                         },
                         json=payload,
                     )
-                    if response.status_code == 429 or response.status_code >= 500:
-                        code = (
-                            "rate_limit"
-                            if response.status_code == 429
-                            else "provider_error"
-                        )
+                    if response.status_code == 429:
+                        self._cooldown(response.headers.get("Retry-After"))
+                        return failure("rate_limit")
+                    if response.status_code >= 500:
+                        code = "provider_error"
                     elif response.is_error:
                         return failure("provider_error")
                     else:

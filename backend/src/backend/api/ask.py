@@ -260,6 +260,10 @@ async def ask(body: AskRequest, request: Request, response: Response) -> AskResp
                 )
         interpretation = await state.interpreter.interpret(body.question)
         if interpretation.outcome == "error":
+            if interpretation.error == "rate_limit":
+                response.headers["Retry-After"] = str(
+                    max(1, state.interpreter.retry_after_seconds())
+                )
             logger.warning(
                 "ask_failed stage=interpretation code=%s", interpretation.error
             )

@@ -126,7 +126,9 @@ def template_plan(question: str) -> QueryPlan | None:
             "changes": ["absolute_difference"],
         }
     elif match := re.fullmatch(
-        r"топ (5|10) товаров по количеству сделок за ((?:19|20)\d{2}) год", text
+        r"топ ([1-9][0-9]?|100) товаров по количеству сделок за "
+        r"((?:19|20)\d{2}) год",
+        text,
     ):
         request = aggregate(
             group_by=["product"],
@@ -159,7 +161,9 @@ def template_plan(question: str) -> QueryPlan | None:
     elif text in {"покажи количество сделок по годам", "yillar bo'yicha bitimlar soni"}:
         request = aggregate(group_by=["deal_year"])
     elif match := re.fullmatch(
-        r"((?:19|20)\d{2})-yilda (?:uzex orqali )?nechta bitim tuzilgan", text
+        r"((?:19|20)\d{2})-yilda (?:bitimlar soni qancha|"
+        r"(?:uzex orqali )?nechta bitim tuzilgan)",
+        text,
     ):
         request = aggregate(date_range=period(match[1]))
     elif match := re.fullmatch(
@@ -167,7 +171,9 @@ def template_plan(question: str) -> QueryPlan | None:
     ):
         request = clarify("currency", "Qaysi valyuta kerak: USD yoki UZS?")
     elif match := re.fullmatch(
-        r"((?:19|20)\d{2})-yilda (uzs|usd) bitimlarning umumiy qiymati qancha", text
+        r"((?:19|20)\d{2})-yilda (uzs|usd) (?:valyutasidagi )?"
+        r"bitimlarning umumiy qiymati qancha",
+        text,
     ):
         request = aggregate(
             metrics=["deal_value"],
@@ -179,17 +185,45 @@ def template_plan(question: str) -> QueryPlan | None:
     ):
         request = clarify("ambiguous_metric", "Bitimlar soni yoki jismoniy hajm?")
     elif match := re.fullmatch(
-        r"((?:19|20)\d{2})-yilda bitimlar soni bo'yicha top (5|10) mahsulot", text
+        r"((?:19|20)\d{2})-yilda (?:(uzs|usd) valyutasidagi )?"
+        r"bitimlar soni bo'yicha top ([1-9][0-9]?|100) (mahsulot|ombor hududi)",
+        text,
     ):
         request = aggregate(
-            group_by=["product"],
+            group_by=["product" if match[4] == "mahsulot" else "warehouse_region"],
             date_range=period(match[1]),
+            **(
+                {"money": {"mode": "source", "source_currency": match[2].upper()}}
+                if match[2]
+                else {}
+            ),
             ranking={
                 "metric": "deal_count",
                 "direction": "top",
-                "count": int(match[2]),
+                "count": int(match[3]),
             },
         )
+    elif match := re.fullmatch(
+        r"((?:19|20)\d{2}) va ((?:19|20)\d{2})-yillarda "
+        r"(?:(uzs|usd) valyutasidagi )?bitimlar sonini solishtir",
+        text,
+    ):
+        first, second = sorted([match[1], match[2]])
+        if first == second:
+            return None
+        request = {
+            "kind": "comparison",
+            "baseline": period(first),
+            "target": period(second),
+            "aggregate": aggregate(
+                **(
+                    {"money": {"mode": "source", "source_currency": match[3].upper()}}
+                    if match[3]
+                    else {}
+                )
+            ),
+            "changes": ["absolute_difference"],
+        }
     elif match := re.fullmatch(
         r"((?:19|20)\d{2}) va ((?:19|20)\d{2})-yillarda (uzs|usd) valyutasidagi "
         r"bitimlar sonini alohida ko'rsat va qaysi yilda ko'proq bo'lganini aniqlang",
