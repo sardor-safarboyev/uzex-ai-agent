@@ -2,16 +2,20 @@
 
 import asyncio
 import json
+import logging
 import re
 from typing import Literal, Self
 
 import httpx
-from pydantic import model_validator
+from pydantic import ValidationError, model_validator
 
 from backend.config import Settings
+from backend.interpretation.templates import template_plan
 from backend.query.compiler import UnsupportedPlan, compile_plan
 from backend.semantic.models import ContractModel, QueryPlan
 from backend.semantic.registry import METRICS, Currency, Dimension, LookupField, Unit
+
+logger = logging.getLogger(__name__)
 
 
 class InterpretationResult(ContractModel):
@@ -84,11 +88,95 @@ def system_prompt() -> str:
         '{"kind":"aggregate","metrics":["deal_count"]}}. '
         "Example: 'Общая сумма?' -> clarification reason currency. "
         "Lookup uses exact deal_id. Ranking needs explicit metric and grouping. "
+        "Use deal_year for calendar-year grouping, not deal_date or a year filter. "
+        "Use product (exact source names), never product_id, for product rankings. "
+        "Most sold products without a count/value/volume measure is ambiguous: "
+        "return clarification reason ambiguous_metric; ask deal count or volume. "
+        "Warehouse region is the only verified region; generic hudud/регион means "
+        "warehouse_region, never seller/buyer location. Label it as warehouse region. "
+        "A single named year is an inclusive date_range Jan 1 through Dec 31. "
+        "Never omit a requested year. For top N use ranking, not sort plus ranking. "
         "Comparison requires explicit disjoint periods, one metric, no grouping. "
+        + " Analytical examples (complete QueryPlan JSON): "
+        + json.dumps(analytical_examples(), ensure_ascii=False)
+        + " Vocabulary: "
         + json.dumps(vocabulary, ensure_ascii=False)
         + " Schema: "
         + json.dumps(QueryPlan.model_json_schema(), ensure_ascii=False)
     )
+
+
+def analytical_examples() -> list[dict]:
+    """Few-shot logical plans; no answers or model-generated arithmetic."""
+
+    def aggregate(**fields):
+        return {"kind": "aggregate", "metrics": ["deal_count"], **fields}
+
+    def year(value):
+        return {"start": f"{value}-01-01", "end": f"{value}-12-31"}
+
+    examples = [
+        ("Покажи количество сделок по годам.", aggregate(group_by=["deal_year"])),
+        ("2024-yilda nechta bitim tuzilgan?", aggregate(date_range=year(2024))),
+        (
+            "2025-yilda eng ko'p sotilgan 5 ta mahsulot qaysilar?",
+            {
+                "kind": "clarification",
+                "reason": "ambiguous_metric",
+                "question": "Bitimlar soni yoki jismoniy hajm?",
+            },
+        ),
+        (
+            "2025-yilda bitimlar soni bo‘yicha top 5 mahsulot",
+            aggregate(
+                group_by=["product"],
+                date_range=year(2025),
+                ranking={"metric": "deal_count", "direction": "top", "count": 5},
+            ),
+        ),
+        (
+            "2023-yilda qaysi hududda eng ko'p bitim tuzilgan?",
+            aggregate(
+                group_by=["warehouse_region"],
+                date_range=year(2023),
+                ranking={"metric": "deal_count", "direction": "top", "count": 1},
+            ),
+        ),
+        (
+            "2024-yildagi bitimlarning umumiy qiymati qancha?",
+            {
+                "kind": "clarification",
+                "reason": "currency",
+                "question": "Qaysi valyuta kerak: USD yoki UZS?",
+            },
+        ),
+        (
+            "2024-yilda UZS bitimlarning umumiy qiymati qancha?",
+            aggregate(
+                metrics=["deal_value"],
+                date_range=year(2024),
+                money={"mode": "source", "source_currency": "UZS"},
+            ),
+        ),
+        (
+            "Сравни количество сделок за 2024 и 2025 годы.",
+            {
+                "kind": "comparison",
+                "baseline": year(2024),
+                "target": year(2025),
+                "aggregate": aggregate(),
+                "changes": ["absolute_difference"],
+            },
+        ),
+    ]
+    return [
+        {
+            "question": question,
+            "plan": {"version": "1.1", "language": language, "request": request},
+        }
+        for question, request in examples
+        for language in ["ru" if question.startswith(("Покажи", "Сравни")) else "uz"]
+    ]
 
 
 def fixed_plan(language: str, kind: str, reason: str) -> QueryPlan:
@@ -128,6 +216,16 @@ class Interpreter:
 
         if not question.strip() or len(question) > 4000:
             return failure("invalid_input")
+        if plan := template_plan(question):
+            compile_plan(plan)
+            kind = plan.request.kind
+            if kind == "clarification":
+                plan = fixed_plan(plan.language, kind, plan.request.reason)
+            return InterpretationResult(
+                language=plan.language,
+                outcome=kind if kind in {"clarification", "unsupported"} else "plan",
+                plan=plan,
+            )
         settings = self.settings
         if not settings.groq_api_key or not settings.groq_api_key.get_secret_value():
             return failure("configuration")
@@ -185,7 +283,12 @@ class Interpreter:
         try:
             choice = response.json()["choices"][0]
             if choice.get("finish_reason") != "stop":
+                logger.warning(
+                    "interpretation_failed stage=completion code=invalid_response"
+                )
                 return failure("invalid_response")
+            # Separate malformed JSON from a valid JSON object violating the plan.
+            json.loads(choice["message"]["content"])
             plan = QueryPlan.model_validate_json(choice["message"]["content"])
             language = plan.language
             request = plan.request
@@ -256,5 +359,13 @@ class Interpreter:
                 else "plan"
             )
             return InterpretationResult(language=language, outcome=outcome, plan=plan)
+        except ValidationError:
+            logger.warning(
+                "interpretation_failed stage=plan_validation code=invalid_response"
+            )
+            return failure("invalid_response")
         except (ValueError, KeyError, IndexError, TypeError, AttributeError):
+            logger.warning(
+                "interpretation_failed stage=response_json code=invalid_response"
+            )
             return failure("invalid_response")

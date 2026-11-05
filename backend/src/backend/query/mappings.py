@@ -33,6 +33,7 @@ FIELDS = MappingProxyType(
     {
         "deal_id": "d.deal_id",
         "deal_date": "d.deal_date",
+        "deal_year": "year(d.deal_date)",
         "warehouse_region": "d.warehouse_region_source",
         "seller_inn": "d.seller_inn",
         "buyer_inn": "d.buyer_inn",

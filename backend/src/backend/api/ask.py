@@ -1,6 +1,7 @@
 """Natural language -> validated logical plan -> deterministic read-only answer."""
 
 import asyncio
+import logging
 import re
 from typing import Annotated, Literal
 
@@ -12,6 +13,7 @@ from backend.query.models import QueryExecution
 from backend.semantic.models import ContractModel, QueryPlan
 
 router = APIRouter(prefix="/api", tags=["questions"])
+logger = logging.getLogger(__name__)
 
 
 class AskRequest(ContractModel):
@@ -223,21 +225,20 @@ async def ask(body: AskRequest, request: Request, response: Response) -> AskResp
             language=language,
             status="error",
             error="busy",
-            answer=MESSAGES[language]["error"],
+            answer=error_message(language, "busy"),
         )
     try:
         interpretation = await state.interpreter.interpret(body.question)
         if interpretation.outcome == "error":
+            logger.warning(
+                "ask_failed stage=interpretation code=%s", interpretation.error
+            )
             response.status_code = 503
             return AskResponse(
                 language=language,
                 status="error",
                 error=interpretation.error,
-                answer=(
-                    RETRY[language]
-                    if interpretation.error == "rate_limit"
-                    else MESSAGES[language]["error"]
-                ),
+                answer=error_message(language, interpretation.error),
             )
         plan = QueryPlan.model_validate(
             {**interpretation.plan.model_dump(), "language": language}
@@ -248,16 +249,19 @@ async def ask(body: AskRequest, request: Request, response: Response) -> AskResp
         )
         result = present(execution)
         if result.status == "error":
+            logger.warning("ask_failed stage=execution code=%s", result.error)
+            result.answer = error_message(language, result.error)
             response.status_code = 503
         return result
     except Exception:
         # Do not return exception strings, provider bodies, SQL, paths or secrets.
+        logger.error("ask_failed stage=api code=internal_error")
         response.status_code = 503
         return AskResponse(
             language=language,
             status="error",
             error="internal_error",
-            answer=MESSAGES[language]["error"],
+            answer=error_message(language, "internal_error"),
         )
     finally:
         state.ask_slots.release()
@@ -267,6 +271,44 @@ RETRY = {
     "uz": "Xizmat band. Birozdan so‘ng qayta urinib ko‘ring.",
     "ru": "Сервис занят. Повторите попытку позже.",
 }
+ERROR_MESSAGES = {
+    "uz": {
+        "configuration": (
+            "Til xizmati sozlanmagan. Xizmat administratoriga murojaat qiling."
+        ),
+        "invalid_input": "Savol 1–4000 belgidan iborat bo‘lishi kerak.",
+        "invalid_response": (
+            "Til xizmati yaroqli so‘rov rejasini qaytarmadi. Savolni aniqroq yozing."
+        ),
+        "provider_error": "Til xizmati mavjud emas. Keyinroq urinib ko‘ring.",
+        "rate_limit": RETRY["uz"],
+        "busy": RETRY["uz"],
+        "timeout": "Til xizmati javob bermadi. Qayta urinib ko‘ring.",
+        "execution_failed": "Ma’lumotlar bazasiga so‘rov bajarilmadi.",
+        "validation_failed": "So‘rov rejasini tekshirib bo‘lmadi.",
+        "internal_error": "So‘rovni xavfsiz bajarib bo‘lmadi.",
+    },
+    "ru": {
+        "configuration": "Языковой сервис не настроен. Обратитесь к администратору.",
+        "invalid_input": "Вопрос должен содержать от 1 до 4000 символов.",
+        "invalid_response": (
+            "Языковой сервис вернул некорректный план. Уточните вопрос."
+        ),
+        "provider_error": "Языковой сервис недоступен. Попробуйте позже.",
+        "rate_limit": RETRY["ru"],
+        "busy": RETRY["ru"],
+        "timeout": "Языковой сервис не ответил. Попробуйте снова.",
+        "execution_failed": "Не удалось выполнить запрос к базе данных.",
+        "validation_failed": "Не удалось проверить план запроса.",
+        "internal_error": "Не удалось безопасно выполнить запрос.",
+    },
+}
+
+
+def error_message(language: str, code: str | None) -> str:
+    return ERROR_MESSAGES[language].get(code, MESSAGES[language]["error"])
+
+
 REASONS = {
     "uz": {
         "currency_conversion": (
@@ -287,6 +329,7 @@ REASONS = {
             "sanalarini ko‘rsating."
         ),
         "currency": "Qaysi valyuta kerak: USD yoki UZS?",
+        "ambiguous_metric": "Qaysi mezon kerak: bitimlar soni yoki jismoniy hajm?",
         "unit": "Qaysi o‘lchov birligi kerak?",
     },
     "ru": {
@@ -306,6 +349,9 @@ REASONS = {
             "Этот фильтр дат не поддерживается. Укажите точные даты начала и окончания."
         ),
         "currency": "Какая валюта нужна: USD или UZS?",
+        "ambiguous_metric": (
+            "По какому показателю: количеству сделок или физическому объёму?"
+        ),
         "unit": "Какая единица измерения нужна?",
     },
 }
