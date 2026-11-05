@@ -1,0 +1,36 @@
+# MVP overlay: immutable snapshot plus same-origin frontend proxy.
+services:
+  backend:
+    environment:
+      GROQ_API_KEY: "${GROQ_API_KEY:?Set GROQ_API_KEY in the backend environment}"
+      UZEX_GROQ_MODEL: "${UZEX_GROQ_MODEL:-openai/gpt-oss-20b}"
+      UZEX_GROQ_TIMEOUT_SECONDS: "${UZEX_GROQ_TIMEOUT_SECONDS:-20}"
+      UZEX_GROQ_MAX_RETRIES: "${UZEX_GROQ_MAX_RETRIES:-2}"
+      UZEX_GROQ_STRUCTURED_OUTPUT: "${UZEX_GROQ_STRUCTURED_OUTPUT:-false}"
+      UZEX_DATABASE_PATH: /data/uzex.duckdb
+      UZEX_DATABASE_METADATA_ENABLED: "false"
+      UZEX_PRODUCTION: "true"
+      UZEX_QUERY_MAX_RESULTS: "${UZEX_QUERY_MAX_RESULTS:-100}"
+      UZEX_CORS_ORIGINS: '${UZEX_CORS_ORIGINS:-[]}'
+    volumes:
+      - type: bind
+        source: ./data/processed/uzex.duckdb
+        target: /data/uzex.duckdb
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "${UZEX_WEB_BIND:-127.0.0.1}:${UZEX_WEB_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
