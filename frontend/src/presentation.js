@@ -78,8 +78,8 @@ copy.uz.errors.invalid_input = copy.uz.invalid;
 copy.ru.errors.invalid_input = copy.ru.invalid;
 copy.uz.errors.validation_failed = 'So‘rov rejasini tekshirib bo‘lmadi.';
 copy.ru.errors.validation_failed = 'Не удалось проверить план запроса.';
-copy.uz.errors.invalid_response = 'Til xizmati yaroqli so‘rov rejasini qaytarmadi. Savolni aniqroq yozing.';
-copy.ru.errors.invalid_response = 'Языковой сервис вернул некорректный план. Уточните вопрос.';
+copy.uz.errors.invalid_response = 'Til xizmati yaroqli so‘rov rejasini qaytarmadi. Keyinroq qayta urinib ko‘ring.';
+copy.ru.errors.invalid_response = 'Языковой сервис вернул некорректный план. Повторите попытку позже.';
 Object.assign(labels, {
   average_unit_price:['O‘rtacha birlik narxi','Средняя цена за единицу'],
   seller_inn:['Sotuvchi STIR','ИНН продавца'], buyer_inn:['Xaridor STIR','ИНН покупателя'],
@@ -145,9 +145,16 @@ export function formatAnswer(result, lang) {
   const t = copy[lang];
   if (result.status !== 'answered') {
     if (result.status === 'error') return t.errors[result.error] || t.error;
+    if (result.reason === 'outside_coverage' && result.availability?.available_years?.length && result.availability?.missing_years?.length) {
+      const years = result.availability.available_years, missing = result.availability.missing_years.join(', ');
+      const first = Math.min(...years), last = Math.max(...years);
+      return lang === 'uz' ? `Mavjud ma’lumotlar ${first}–${last}-yillarni qamrab oladi. ${missing}-yil bo‘yicha bitimlar ma’lumoti mavjud emas.` : `Доступные данные охватывают ${first}–${last} годы. Данных о сделках за ${missing} год нет.`;
+    }
     return nonanswerReasons[lang][result.reason] || t[result.status] || t.failure;
   }
   const data = result.execution?.result?.outcome?.data;
+  const summary = analyticalSummary(data, result.execution?.scope?.request, lang);
+  if (summary) return summary;
   if (data?.rows?.length === 1 && data.columns.length === 1) {
     const column = data.columns[0], value = data.rows[0][0];
     if (value !== null && value !== undefined) {
@@ -161,7 +168,40 @@ export function formatAnswer(result, lang) {
       return `${title(column.field,lang)}: ${formatted}${suffix ? ' ' + suffix : ''}.`;
     }
   }
-  return t.rows.replace('{count}', formatNumber(data?.rows?.length ?? result.execution?.returned_rows ?? 0,lang));
+  return t.answered;
+}
+
+function analyticalSummary(data, request, lang) {
+  if (!data?.rows?.length || !request) return null;
+  const fields = data.columns.map(column => column.field);
+  if (request.kind === 'comparison' && request.aggregate?.metrics?.join() === 'deal_count' && data.rows.length === 1) {
+    const periods = [request.baseline, request.target];
+    if (periods.some(period => !period?.start || period.start.slice(0,4) !== period.end?.slice(0,4) || !period.start.endsWith('-01-01') || !period.end.endsWith('-12-31'))) return null;
+    const values = Object.fromEntries(fields.map((field, index) => [field, data.rows[0][index]]));
+    if (!/^\d+$/.test(String(values.baseline)) || !/^\d+$/.test(String(values.target))) return null;
+    const [a,b] = periods.map(period => period.start.slice(0,4));
+    const first = formatNumber(values.baseline,lang), second = formatNumber(values.target,lang);
+    const currency = request.aggregate.money?.source_currency;
+    const suffix = currency ? ` (${currency})` : '';
+    const winner = BigInt(values.baseline) > BigInt(values.target) ? a : b;
+    const equal = BigInt(values.baseline) === BigInt(values.target);
+    let text = lang === 'uz' ? `${a}-yilda ${first} ta, ${b}-yilda ${second} ta bitim qayd etilgan${suffix}.` : `В ${a} году — ${first}, в ${b} году — ${second} сделок${suffix}.`;
+    text += lang === 'uz' ? (equal ? ' Bitimlar soni teng.' : ` Ko‘proq bitim: ${winner}-yilda.`) : (equal ? ' Количество сделок одинаково.' : ` Больше сделок в ${winner} году.`);
+    if (/^-?\d+$/.test(String(values.absolute_difference))) {
+      const difference = formatNumber(String(values.absolute_difference).replace(/^-/,''),lang);
+      text += lang === 'uz' ? ` Farq: ${difference} ta.` : ` Разница: ${difference}.`;
+    }
+    return text;
+  }
+  if (request.kind !== 'aggregate' || request.metrics?.join() !== 'deal_count') return null;
+  if (fields.join() === 'warehouse_region,deal_count' && request.ranking?.count === 1 && request.ranking?.direction === 'top' && data.rows[0][0] != null) {
+    const [name,count] = data.rows[0];
+    const year = request.date_range?.start?.slice(0,4) === request.date_range?.end?.slice(0,4) ? request.date_range?.start?.slice(0,4) : null;
+    return lang === 'uz' ? `${year ? year+'-yilda ' : ''}Ombor hududlari bo‘yicha yetakchi: ${name} — ${formatNumber(count,lang)} ta bitim.` : `${year ? 'В '+year+' году ' : ''}Лидер по региону склада: ${name} — ${formatNumber(count,lang)} сделок.`;
+  }
+  if (fields.join() === 'deal_year,deal_count') return (lang === 'uz' ? 'Yillar bo‘yicha bitimlar soni: ' : 'Количество сделок по годам: ') + data.rows.map(([year,count]) => `${year}: ${formatNumber(count,lang)}`).join('; ') + '.';
+  if (fields.join() === 'product,deal_count' && request.ranking) return lang === 'uz' ? `Bitimlar soni bo‘yicha ${data.rows.length} ta mahsulot jadvalda ko‘rsatilgan.` : `В таблице ${data.rows.length} товаров по количеству сделок.`;
+  return null;
 }
 export function formatWarning(text, lang) {
   const warnings = [
@@ -198,7 +238,7 @@ const nonanswerReasons = {
     "unavailable_data": "Bu so‘rov uchun kerakli ma’lumot mavjud emas.",
     "unsupported_unit": "So‘ralgan o‘lchov birligi yoki birliklarni o‘tkazish qoidasi tasdiqlanmagan.",
     "unsupported_date": "Bu sana filtri qo‘llanmaydi. Aniq boshlanish va tugash sanalarini ko‘rsating.",
-    "currency": "Qaysi valyuta kerak: USD yoki UZS?",
+    "currency": "Bitimlarning umumiy qiymatini UZS yoki USD valyutasida hisoblaymi?",
     "ambiguous_metric": "Qaysi mezon kerak: bitimlar soni yoki jismoniy hajm?",
     "unit": "Qaysi o‘lchov birligi kerak?"
   },
@@ -208,8 +248,25 @@ const nonanswerReasons = {
     "unavailable_data": "Данные, необходимые для этого запроса, отсутствуют.",
     "unsupported_unit": "Запрошенная единица или правила пересчёта единиц не проверены.",
     "unsupported_date": "Этот фильтр дат не поддерживается. Укажите точные даты начала и окончания.",
-    "currency": "Какая валюта нужна: USD или UZS?",
+    "currency": "Рассчитать общую стоимость сделок в UZS или USD?",
     "ambiguous_metric": "По какому показателю: количеству сделок или физическому объёму?",
     "unit": "Какая единица измерения нужна?"
   }
 };
+
+Object.assign(nonanswerReasons.uz, {
+  unavailable_profit: 'To‘plamda sof foyda va xarajatlar ma’lumoti yo‘q. Bitim qiymati foyda emas.',
+  unavailable_employees: 'To‘plamda kompaniyalar xodimlari soni mavjud emas.',
+  unavailable_tax: 'To‘plamda to‘langan soliq summalari yo‘q. QQS maqomi soliq to‘lovini bildirmaydi.',
+  unsupported_causality: 'To‘plam yetakchilik sabablarini aniqlashga imkon bermaydi. Reyting uchun bitimlar soni yoki jismoniy hajmni tanlang.',
+  unsupported_statistic: 'Mediana tasdiqlangan hisoblash amallari orasida yo‘q.',
+  unsupported_forecast: 'Prognoz hisoblanmaydi; faqat mavjud manba bitimlari tahlil qilinadi.',
+});
+Object.assign(nonanswerReasons.ru, {
+  unavailable_profit: 'В наборе нет чистой прибыли и расходов. Стоимость сделок не является прибылью.',
+  unavailable_employees: 'В наборе нет численности сотрудников компаний.',
+  unavailable_tax: 'В наборе нет сумм уплаченных налогов. Статус плательщика НДС не подтверждает уплату налога.',
+  unsupported_causality: 'Набор не позволяет установить причины лидерства. Для рейтинга выберите количество сделок или физический объём.',
+  unsupported_statistic: 'Медиана не входит в проверенные операции расчёта.',
+  unsupported_forecast: 'Прогнозирование не поддерживается; анализируются только имеющиеся сделки.',
+});

@@ -172,10 +172,17 @@ class AggregateRequest(ContractModel):
         )
         monetary = any(METRICS[m].monetary for m in self.metrics) or monetary_predicates
         physical = any(METRICS[m].physical for m in self.metrics) or physical_predicates
-        if monetary != (self.money is not None):
+        source_currency_scope = (
+            self.money is not None
+            and self.money.mode == "source"
+            and self.money.source_currency is not None
+        )
+        if (monetary and self.money is None) or (
+            not monetary and self.money is not None and not source_currency_scope
+        ):
             raise ValueError(
-                "money policy is required exactly when monetary metrics "
-                "or predicates are selected"
+                "money policy is required for monetary metrics/predicates; "
+                "nonmonetary queries allow only an explicit source currency"
             )
         if physical != (self.units is not None):
             raise ValueError(
@@ -341,6 +348,12 @@ class UnsupportedRequest(ContractModel):
         "currency_conversion",
         "unsupported_unit",
         "unsupported_date",
+        "unavailable_profit",
+        "unavailable_employees",
+        "unavailable_tax",
+        "unsupported_causality",
+        "unsupported_statistic",
+        "unsupported_forecast",
     ]
     explanation: Text
 
@@ -369,11 +382,19 @@ class QueryPlan(ContractModel):
                 )
                 conversion = query.units and query.units.mode == "convert_mass"
                 year_grouping = Dimension.DEAL_YEAR in query.group_by
+                currency_count = (
+                    query.money
+                    and not any(METRICS[m].monetary for m in query.metrics)
+                    and not any(
+                        f.field in MONETARY_FIELDS for f in query.numeric_filters
+                    )
+                )
                 if (
                     query.numeric_filters
                     or normalized_product
                     or conversion
                     or year_grouping
+                    or currency_count
                 ):
                     raise ValueError(
                         "numeric predicates, product_id, deal_year and mass conversion "

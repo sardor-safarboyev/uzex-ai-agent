@@ -1,5 +1,32 @@
 # Query plan 1.1
 
+## Final quality: currency-scoped counts
+
+In version 1.1, a nonmonetary aggregate may use
+`money: {"mode":"source","source_currency":"UZS"}` (or USD) to select a
+source-currency population. This applies equally to `comparison.aggregate` and
+may combine with inclusive date ranges and exact source warehouse-region
+filters. It does not convert money or attach currency units to transaction
+counts. Version 1.0 rejects this extension. Nonmonetary requests still reject
+conversion mode and source policies without a specific currency. Currency text
+filters remain forbidden; the typed policy is the single population selector.
+
+The new nonexecuting reason codes are `unavailable_profit`,
+`unavailable_employees`, `unavailable_tax`, `unsupported_causality`,
+`unsupported_statistic`, and `unsupported_forecast`. The first three surface as
+`insufficient_data`; the others as `unsupported`. None authorizes new SQL.
+
+Before interpretation, `/api/ask` checks explicitly requested years against the
+distinct actual deal years in a verified read-only snapshot. Missing years
+return `insufficient_data`, reason `outside_coverage`, and structured
+`availability.available_years` / `missing_years`. No zero count is inferred.
+Ordinary empty matches within coverage remain `no_match`. Unavailable/corrupt
+snapshot metadata yields a database failure rather than invented coverage.
+
+`truncated` means an unexpected result reduction. Having additional groups beyond
+an explicitly requested TOP N does not set it; reducing TOP N below its requested
+count because of the server maximum still does. Population coverage is unchanged.
+
 ## Analytical reliability extension
 
 Version 1.1 aggregates additionally accept `deal_year` as a grouping/sort dimension.

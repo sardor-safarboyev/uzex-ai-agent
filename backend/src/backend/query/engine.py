@@ -115,6 +115,18 @@ class QueryEngine:
         self._adapter = DuckDBAdapter(settings)
         self._max_results = settings.query_max_results
 
+    def dataset_years(self) -> list[int]:
+        """Read actual date coverage only after validating the supplied snapshot."""
+        with self._adapter.connection() as connection:
+            verify_snapshot(connection)
+            return [
+                row[0]
+                for row in connection.execute(
+                    "SELECT DISTINCT year(deal_date) FROM main.deals "
+                    "WHERE deal_date IS NOT NULL ORDER BY 1"
+                ).fetchall()
+            ]
+
     def execute(self, value: object) -> QueryExecution:
         plan = None
         try:
@@ -138,6 +150,22 @@ class QueryEngine:
                 },
             )
         if isinstance(plan.request, UnsupportedRequest):
+            if plan.request.reason in {
+                "unavailable_profit",
+                "unavailable_employees",
+                "unavailable_tax",
+            }:
+                return self._outcome(
+                    plan,
+                    {
+                        "status": "insufficient_data",
+                        "explanation": (
+                            "The requested field is not present "
+                            "in the verified dataset."
+                        ),
+                    },
+                    issue="missing_values",
+                )
             return self._outcome(
                 plan, {"status": "unsupported", "explanation": plan.request.explanation}
             )
@@ -408,6 +436,9 @@ class QueryEngine:
                 logical_rows = exact_order(logical_rows, request)
             limit = compiled[0].limit
             truncated = len(logical_rows) > limit
+            if request.ranking and request.ranking.count <= self._max_results:
+                # More groups than a requested TOP N is intentional selection.
+                truncated = False
             logical_rows = logical_rows[:limit]
             columns = [column(field, request) for field in fields]
             rows = [

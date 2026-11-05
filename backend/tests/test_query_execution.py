@@ -314,7 +314,7 @@ def test_limits_ordering_and_ties_are_deterministic(engine, sources):
     )
     response = engine.execute(request)
     assert [row[0].year for row in rows(response)] == [2022, 2023]
-    assert response.truncated is True
+    assert response.truncated is False
     assert QueryExecution.model_validate_json(response.model_dump_json()) == response
     assert response.result.coverage.matched_rows == 5
     assert engine.execute(request).model_dump_json() == response.model_dump_json()

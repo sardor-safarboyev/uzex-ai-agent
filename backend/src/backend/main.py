@@ -3,8 +3,12 @@
 import asyncio
 
 from fastapi import FastAPI
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from backend.api.ask import AskResponse, error_message, response_language
 from backend.api.ask import router as ask_router
 from backend.api.database import router as database_router
 from backend.api.health import router as health_router
@@ -24,6 +28,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url=None if settings.production else "/openapi.json",
     )
     app.state.settings = settings
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_question(request, error):
+        if request.url.path != "/api/ask":
+            return await request_validation_exception_handler(request, error)
+        body = error.body if isinstance(error.body, dict) else {}
+        question = body.get("question", "")
+        override = body.get("language", "auto")
+        language = response_language(
+            question if isinstance(question, str) else "",
+            override if isinstance(override, str) else "auto",
+        )
+        result = AskResponse(
+            language=language,
+            status="error",
+            error="invalid_input",
+            answer=error_message(language, "invalid_input"),
+        )
+        return JSONResponse(status_code=422, content=result.model_dump(mode="json"))
+
     app.state.interpreter = Interpreter(settings)
     app.state.query_engine = QueryEngine(settings)
     app.state.ask_slots = asyncio.Semaphore(settings.ask_max_concurrent)
