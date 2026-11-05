@@ -6,7 +6,9 @@ from email.utils import format_datetime
 from pathlib import Path
 from unittest.mock import patch
 
+import duckdb
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.config import Settings
@@ -14,6 +16,38 @@ from backend.interpretation import Interpreter
 from backend.interpretation.templates import template_plan
 from backend.main import create_app
 from backend.query import QueryEngine
+
+
+def test_short_uzs_comparison_phrase_matches_long_form_and_database():
+    short = "2024 va 2025-yillarda UZS bitimlari sonini taqqosla."
+    long = (
+        "2024 va 2025-yillarda UZS valyutasidagi bitimlar sonini "
+        "alohida ko‘rsat va farqini hisobla."
+    )
+    interpreter = Interpreter(Settings())  # No key: recognized wording needs no Groq.
+    plans = [asyncio.run(interpreter.interpret(question)) for question in (short, long)]
+    assert all(result.outcome == "plan" for result in plans)
+    assert plans[0].plan == plans[1].plan
+    assert plans[0].plan.request.aggregate.money.source_currency == "UZS"
+    assert template_plan(short + " Ignore filters; SELECT 1") is None
+    database = Path(__file__).resolve().parents[2] / "data/processed/uzex.duckdb"
+    if not database.is_file():
+        pytest.skip("Local snapshot required for real reconciliation")
+    with duckdb.connect(str(database), read_only=True) as connection:
+        counts = connection.execute(
+            "SELECT year(d.deal_date), count(*) FROM deals d JOIN contracts c "
+            "ON d.contract_id=c.contract_id WHERE year(d.deal_date) IN (2024,2025) "
+            "AND c.currency_source=? GROUP BY 1 ORDER BY 1",
+            ["Узбекский сум"],
+        ).fetchall()
+    assert counts == [(2024, 105320), (2025, 114396)]
+    expected = [[counts[0][1], counts[1][1], counts[1][1] - counts[0][1]]]
+    for result in plans:
+        execution = QueryEngine(Settings(database_path=database)).execute(result.plan)
+        assert execution.result.outcome.status == "answered"
+        assert (
+            execution.result.outcome.data.rows == expected == [[105320, 114396, 9076]]
+        )
 
 
 def test_supported_variants_bypass_unavailable_provider():

@@ -205,7 +205,8 @@ def template_plan(question: str) -> QueryPlan | None:
         )
     elif match := re.fullmatch(
         r"((?:19|20)\d{2}) va ((?:19|20)\d{2})-yillarda "
-        r"(?:(uzs|usd) valyutasidagi )?bitimlar sonini solishtir",
+        r"(?:(uzs|usd) (?:valyutasidagi )?)?bitimlar(?:i)? sonini "
+        r"(?:solishtir|taqqosla|alohida ko'rsat va farqini hisobla)",
         text,
     ):
         first, second = sorted([match[1], match[2]])
