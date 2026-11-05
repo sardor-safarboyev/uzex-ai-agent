@@ -85,15 +85,22 @@ def template_plan(question: str) -> QueryPlan | None:
         r"bitimlar sonining yillik o'sish yoki kamayish foizlarini hisobla",
         text,
     )
-    if yearly:
-        first, last = map(int, yearly.groups())
-        if last == first + 1:
+    endpoint_change = re.fullmatch(
+        r"((?:19|20)\d{2})-yildan ((?:19|20)\d{2})-yilgacha "
+        r"jami bitimlar soni necha foizga oshgan",
+        text,
+    )
+    if yearly or endpoint_change:
+        first, last = map(int, (yearly or endpoint_change).groups())
+        if last == first + 1 or (endpoint_change and first < last):
             request = {
                 "kind": "comparison",
                 "baseline": period(first),
                 "target": period(last),
                 "aggregate": aggregate(),
-                "changes": ["percentage_change"],
+                "changes": ["absolute_difference", "percentage_change"]
+                if endpoint_change
+                else ["percentage_change"],
             }
         else:
             request = {
