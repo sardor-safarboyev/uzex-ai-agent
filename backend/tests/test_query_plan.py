@@ -98,7 +98,7 @@ def test_non_query_outcomes(kind, content):
         ({"date_range": {"start": "2026-01-02", "end": "2026-01-01"}}, "on or before"),
         ({"date_range": {"start": "yesterday", "end": "2026-01-01"}}, "valid date"),
         ({"metrics": ["deal_value"]}, "money policy"),
-        ({"money": {"mode": "source", "source_currency": "USD"}}, "money policy"),
+        ({"money": {"mode": "source"}}, "money policy"),
         ({"metrics": ["deal_value"], "money": {"mode": "source"}}, "source_currency"),
         (
             {

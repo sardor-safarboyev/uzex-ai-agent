@@ -9,7 +9,11 @@ from fastapi import APIRouter, Request, Response
 from pydantic import Field, StrictStr
 from starlette.concurrency import run_in_threadpool
 
+from backend.api.availability import Availability, availability_message, requested_years
+from backend.api.summaries import count_summary
+from backend.database.errors import DatabaseAccessError
 from backend.query.models import QueryExecution
+from backend.query.snapshot import InsufficientSnapshot
 from backend.semantic.models import ContractModel, QueryPlan
 
 router = APIRouter(prefix="/api", tags=["questions"])
@@ -59,6 +63,7 @@ class AskResponse(ContractModel):
     answer: str
     reason: str | None = None
     execution: QueryExecution | None = None
+    availability: Availability | None = None
     error: (
         Literal[
             "configuration",
@@ -184,7 +189,7 @@ def present(execution: QueryExecution) -> AskResponse:
         "cannot be represented or combined.",
     }:
         reason = "unsupported_unit"
-    if status in {"unsupported", "ambiguous"}:
+    if status in {"unsupported", "ambiguous", "insufficient_data"}:
         answer = REASONS[result.language].get(reason, answer)
     if status == "answered":
         data = result.outcome.data
@@ -202,6 +207,7 @@ def present(execution: QueryExecution) -> AskResponse:
                         if result.language == "uz"
                         else f"Всего зарегистрировано {count} сделок."
                     )
+    answer = count_summary(execution) or answer
     return AskResponse(
         language=result.language,
         status=status,
@@ -228,6 +234,21 @@ async def ask(body: AskRequest, request: Request, response: Response) -> AskResp
             answer=error_message(language, "busy"),
         )
     try:
+        years = requested_years(body.question)
+        if years and state.settings.database_path is not None:
+            available = await run_in_threadpool(state.query_engine.dataset_years)
+            missing = sorted(years - set(available))
+            if missing and available:
+                availability = Availability(
+                    available_years=available, missing_years=missing
+                )
+                return AskResponse(
+                    language=language,
+                    status="insufficient_data",
+                    reason="outside_coverage",
+                    availability=availability,
+                    answer=availability_message(availability, language),
+                )
         interpretation = await state.interpreter.interpret(body.question)
         if interpretation.outcome == "error":
             logger.warning(
@@ -253,6 +274,15 @@ async def ask(body: AskRequest, request: Request, response: Response) -> AskResp
             result.answer = error_message(language, result.error)
             response.status_code = 503
         return result
+    except (DatabaseAccessError, InsufficientSnapshot):
+        logger.warning("ask_failed stage=coverage code=execution_failed")
+        response.status_code = 503
+        return AskResponse(
+            language=language,
+            status="error",
+            error="execution_failed",
+            answer=error_message(language, "execution_failed"),
+        )
     except Exception:
         # Do not return exception strings, provider bodies, SQL, paths or secrets.
         logger.error("ask_failed stage=api code=internal_error")
@@ -278,7 +308,8 @@ ERROR_MESSAGES = {
         ),
         "invalid_input": "Savol 1–4000 belgidan iborat bo‘lishi kerak.",
         "invalid_response": (
-            "Til xizmati yaroqli so‘rov rejasini qaytarmadi. Savolni aniqroq yozing."
+            "Til xizmati yaroqli so‘rov rejasini qaytarmadi. "
+            "Keyinroq qayta urinib ko‘ring."
         ),
         "provider_error": "Til xizmati mavjud emas. Keyinroq urinib ko‘ring.",
         "rate_limit": RETRY["uz"],
@@ -292,7 +323,7 @@ ERROR_MESSAGES = {
         "configuration": "Языковой сервис не настроен. Обратитесь к администратору.",
         "invalid_input": "Вопрос должен содержать от 1 до 4000 символов.",
         "invalid_response": (
-            "Языковой сервис вернул некорректный план. Уточните вопрос."
+            "Языковой сервис вернул некорректный план. Повторите попытку позже."
         ),
         "provider_error": "Языковой сервис недоступен. Попробуйте позже.",
         "rate_limit": RETRY["ru"],
@@ -328,7 +359,9 @@ REASONS = {
             "Bu sana filtri qo‘llanmaydi. Aniq boshlanish va tugash "
             "sanalarini ko‘rsating."
         ),
-        "currency": "Qaysi valyuta kerak: USD yoki UZS?",
+        "currency": (
+            "Bitimlarning umumiy qiymatini UZS yoki USD valyutasida hisoblaymi?"
+        ),
         "ambiguous_metric": "Qaysi mezon kerak: bitimlar soni yoki jismoniy hajm?",
         "unit": "Qaysi o‘lchov birligi kerak?",
     },
@@ -348,10 +381,55 @@ REASONS = {
         "unsupported_date": (
             "Этот фильтр дат не поддерживается. Укажите точные даты начала и окончания."
         ),
-        "currency": "Какая валюта нужна: USD или UZS?",
+        "currency": "Рассчитать общую стоимость сделок в UZS или USD?",
         "ambiguous_metric": (
             "По какому показателю: количеству сделок или физическому объёму?"
         ),
         "unit": "Какая единица измерения нужна?",
     },
 }
+
+REASONS["uz"].update(
+    {
+        "unavailable_profit": (
+            "To‘plamda sof foyda va xarajatlar ma’lumoti yo‘q. "
+            "Bitim qiymati foyda emas."
+        ),
+        "unavailable_employees": "To‘plamda kompaniyalar xodimlari soni mavjud emas.",
+        "unavailable_tax": (
+            "To‘plamda to‘langan soliq summalari yo‘q. "
+            "QQS maqomi soliq to‘lovini bildirmaydi."
+        ),
+        "unsupported_causality": (
+            "To‘plam yetakchilik sabablarini aniqlashga imkon bermaydi. "
+            "Reyting uchun bitimlar soni yoki jismoniy hajmni tanlang."
+        ),
+        "unsupported_statistic": (
+            "Mediana tasdiqlangan hisoblash amallari orasida yo‘q."
+        ),
+        "unsupported_forecast": (
+            "Prognoz hisoblanmaydi; faqat mavjud manba bitimlari tahlil qilinadi."
+        ),
+    }
+)
+REASONS["ru"].update(
+    {
+        "unavailable_profit": (
+            "В наборе нет чистой прибыли и расходов. "
+            "Стоимость сделок не является прибылью."
+        ),
+        "unavailable_employees": "В наборе нет численности сотрудников компаний.",
+        "unavailable_tax": (
+            "В наборе нет сумм уплаченных налогов. "
+            "Статус плательщика НДС не подтверждает уплату налога."
+        ),
+        "unsupported_causality": (
+            "Набор не позволяет установить причины лидерства. "
+            "Для рейтинга выберите количество сделок или физический объём."
+        ),
+        "unsupported_statistic": "Медиана не входит в проверенные операции расчёта.",
+        "unsupported_forecast": (
+            "Прогнозирование не поддерживается; анализируются только имеющиеся сделки."
+        ),
+    }
+)

@@ -96,6 +96,9 @@ def system_prompt() -> str:
         "warehouse_region, never seller/buyer location. Label it as warehouse region. "
         "A single named year is an inclusive date_range Jan 1 through Dec 31. "
         "Never omit a requested year. For top N use ranking, not sort plus ranking. "
+        "Deal counts can be filtered by currency: use money mode source with "
+        "explicit source_currency even though deal_count is nonmonetary. "
+        "This policy also works in comparison.aggregate with region filters. "
         "Comparison requires explicit disjoint periods, one metric, no grouping. "
         + " Analytical examples (complete QueryPlan JSON): "
         + json.dumps(analytical_examples(), ensure_ascii=False)

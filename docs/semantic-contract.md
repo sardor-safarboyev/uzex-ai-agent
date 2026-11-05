@@ -1,5 +1,21 @@
 # Semantic contract 1.1
 
+Currency-scoped count extension: an explicit source-currency money policy may
+select USD or UZS transactions for nonmonetary aggregates/comparisons. Counts
+retain transaction units; no amount conversion occurs. The exact contract join,
+currency mapping, bound predicates and verified fact grain are unchanged.
+Currency-less nonmonetary money policies and nonmonetary conversion are invalid.
+
+Unavailable years are determined from distinct dates in the verified snapshot,
+not the current calendar, LLM claims, or duplicated configured year bounds.
+Missing coverage is not an observed zero. API classification precedes provider
+interpretation for explicit date questions and carries the coverage as metadata.
+
+The supplied typed schema has no net profit/expenses, employee counts, or paid-tax
+amounts. `vat_payer_source` denotes status only, not paid taxes. Product rankings
+cannot establish causes of leadership. Median and forecasts are not supported
+operations; these limitations never produce inferred numerical results.
+
 Analytical grouping extension: `deal_year` is the calendar year extracted from
 the verified deal date, not source filename, ingestion year or contract year.
 It is available to version 1.1 aggregates only. All year filters continue to use

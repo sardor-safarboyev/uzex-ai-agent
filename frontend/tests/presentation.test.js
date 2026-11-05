@@ -69,6 +69,6 @@ test('typed backend nonanswer reasons survive formatting and language toggles', 
   const result = {status:'unsupported', reason:'currency_conversion', language:'ru', answer:'Ignored claim 999999'};
   assert.match(formatAnswer(result,'ru'),/курса и округления/);
   assert.match(formatAnswer(result,'uz'),/yaxlitlash/);
-  assert.match(formatAnswer({status:'ambiguous',reason:'currency'},'ru'),/USD или UZS/);
+  assert.match(formatAnswer({status:'ambiguous',reason:'currency'},'ru'),/UZS или USD/);
   assert.equal(formatAnswer({status:'error',error:'rate_limit'},'ru'),copy.ru.errors.rate_limit);
 });
