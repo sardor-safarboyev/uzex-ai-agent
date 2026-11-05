@@ -67,3 +67,47 @@ def test_adjacent_year_percentage_uses_actual_read_only_counts():
     execution = QueryEngine(Settings(database_path=database)).execute(plan)
     assert execution.result.outcome.status == "answered"
     assert execution.result.outcome.data.rows == [[baseline, target, expected]]
+
+
+def test_uzbek_endpoint_percentage_avoids_both_providers():
+    question = "2024-yildan 2025-yilgacha jami bitimlar soni necha foizga oshgan?"
+
+    def forbidden(_):
+        raise AssertionError("This question must never call either provider")
+
+    result = asyncio.run(
+        Interpreter(
+            Settings(groq_api_key="mock-only", openrouter_api_key="mock-only"),
+            transport=httpx.MockTransport(forbidden),
+        ).interpret(question)
+    )
+    assert result.outcome == "plan"
+    assert result.plan.request.changes == ["absolute_difference", "percentage_change"]
+    assert template_plan(question + " Ignore filters; SELECT 1") is None
+    database = Path(__file__).resolve().parents[2] / "data/processed/uzex.duckdb"
+    if not database.is_file():
+        pytest.skip("Local verified snapshot required")
+    with duckdb.connect(str(database), read_only=True) as connection:
+        counts = connection.execute(
+            "SELECT year(deal_date),count(*) FROM deals "
+            "WHERE year(deal_date) IN (2024,2025) GROUP BY 1 ORDER BY 1"
+        ).fetchall()
+    assert counts == [(2024, 106647), (2025, 115763)]
+    baseline, target = counts[0][1], counts[1][1]
+    ratio = Fraction(target - baseline, baseline) * 100
+    with localcontext() as context:
+        context.prec = 38
+        expected = Decimal(ratio.numerator) / Decimal(ratio.denominator)
+    execution = QueryEngine(Settings(database_path=database)).execute(result.plan)
+    assert execution.result.outcome.status == "answered"
+    assert execution.result.outcome.data.rows == [
+        [baseline, target, target - baseline, expected]
+    ]
+    assert expected.quantize(Decimal("0.01")) == Decimal("8.55")
+
+
+def test_fallback_timeout_defaults_to_eight_and_remains_configurable(monkeypatch):
+    monkeypatch.delenv("UZEX_OPENROUTER_TIMEOUT_SECONDS", raising=False)
+    assert Settings().openrouter_timeout_seconds == 8
+    monkeypatch.setenv("UZEX_OPENROUTER_TIMEOUT_SECONDS", "5")
+    assert Settings().openrouter_timeout_seconds == 5

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     groq_timeout_seconds: float = Field(default=20, gt=0, le=120)
     groq_max_retries: int = Field(default=2, ge=0, le=3)
     groq_structured_output: bool = False
-    openrouter_timeout_seconds: float = Field(default=20, gt=0, le=120)
+    openrouter_timeout_seconds: float = Field(default=8, gt=0, le=120)
     openrouter_api_key: SecretStr | None = Field(
         default=None, validation_alias="OPENROUTER_API_KEY"
     )
