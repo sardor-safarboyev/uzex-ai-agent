@@ -1,5 +1,31 @@
 # Query plan 1.1
 
+## Analytical reliability extension
+
+Version 1.1 aggregates additionally accept `deal_year` as a grouping/sort dimension.
+It is the integer calendar year of the verified logical `deal_date`, compiled
+through a fixed allowlisted expression. Version 1.0 rejects this addition.
+Neither `deal_year` nor `deal_date` accepts text filters: use inclusive
+`date_range` bounds. `deal_year` is not a lookup field or model-supplied expression.
+
+```json
+{"version":"1.1","language":"ru","request":{"kind":"aggregate","metrics":["deal_count"],"group_by":["deal_year"]}}
+```
+
+Product top-N uses `product`, `deal_count`, an explicit date range and
+`ranking: {"metric":"deal_count","direction":"top","count":5}`. It counts
+deals for exact source product names. “Most sold” without a measure requires
+`ambiguous_metric` clarification. Monetary totals without currency require
+`currency` clarification. The only supported region is the warehouse region,
+labeled explicitly in the result; seller/buyer geography remains unverified.
+
+Comparison questions use the existing comparison request: two disjoint inclusive
+periods, one metric, and deterministic arithmetic in the executor.
+Anchored question templates can construct these same validated plans before the
+provider call, including nonexecuting clarification plans. Unrecognized wording
+or additional clauses go through the existing interpreter; templates never drop
+constraints. Both paths revalidate through the same compiler and executor.
+
 `QueryPlan.model_validate(payload)` and `QueryPlan.model_validate_json(text)`
 validate the contract. `QueryPlan.model_json_schema()` exports its JSON Schema.
 Use runtime validation too: cross-field rules are not fully captured in JSON

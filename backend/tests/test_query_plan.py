@@ -340,7 +340,7 @@ def test_documented_examples_parse():
 
     document = Path(__file__).resolve().parents[2] / "docs" / "query-plan.md"
     examples = re.findall(r"```json\n(.*?)\n```", document.read_text(), re.DOTALL)
-    assert len(examples) == 5
+    assert len(examples) == 6
     assert {QueryPlan.model_validate_json(e).request.kind for e in examples} == {
         "aggregate",
         "clarification",

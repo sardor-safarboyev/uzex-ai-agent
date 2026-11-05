@@ -15,6 +15,7 @@ class Metric(StrEnum):
 
 class Dimension(StrEnum):
     DEAL_DATE = "deal_date"
+    DEAL_YEAR = "deal_year"
     WAREHOUSE_REGION = "warehouse_region"
     SELLER_INN = "seller_inn"
     BUYER_INN = "buyer_inn"

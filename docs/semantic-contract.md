@@ -1,5 +1,15 @@
 # Semantic contract 1.1
 
+Analytical grouping extension: `deal_year` is the calendar year extracted from
+the verified deal date, not source filename, ingestion year or contract year.
+It is available to version 1.1 aggregates only. All year filters continue to use
+inclusive date ranges. A product ranking by deal count counts transactions for
+each exact source product name; it makes no claim about physical volume or
+normalized product identity. Unqualified “most sold” requires measure
+clarification. Region results denote the source warehouse region explicitly.
+Totals must retain one currency or separate currency groups; omitting currency
+from a natural-language total requires clarification, never a mixed USD/UZS sum.
+
 This is a logical vocabulary. Profiled CSV headers and the validated ingestion
 snapshot now have explicit [physical mappings](physical-schema.md). Unsupported
 normalization and conversion semantics still require approval before execution.

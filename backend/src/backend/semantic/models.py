@@ -53,8 +53,8 @@ class Filter(ContractModel):
 
     @model_validator(mode="after")
     def compatible(self) -> Self:
-        if self.field == Dimension.DEAL_DATE:
-            raise ValueError("use date_range for deal_date filters")
+        if self.field in {Dimension.DEAL_DATE, Dimension.DEAL_YEAR}:
+            raise ValueError("use date_range for deal_date/deal_year filters")
         if self.operator in {"eq", "ne"} and len(self.values) != 1:
             raise ValueError("eq and ne require exactly one value")
         if len(set(self.values)) != len(self.values):
@@ -368,9 +368,15 @@ class QueryPlan(ContractModel):
                     f.field == Dimension.PRODUCT_ID for f in query.filters
                 )
                 conversion = query.units and query.units.mode == "convert_mass"
-                if query.numeric_filters or normalized_product or conversion:
+                year_grouping = Dimension.DEAL_YEAR in query.group_by
+                if (
+                    query.numeric_filters
+                    or normalized_product
+                    or conversion
+                    or year_grouping
+                ):
                     raise ValueError(
-                        "numeric predicates, product_id and mass conversion "
+                        "numeric predicates, product_id, deal_year and mass conversion "
                         "require version 1.1"
                     )
         return self

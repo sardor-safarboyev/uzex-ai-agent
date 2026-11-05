@@ -33,6 +33,7 @@ export const copy = {
   },
 };
 const labels = {
+  deal_year: ['Yil','Год'],
   deal_count: ['Bitimlar soni','Количество сделок'], deal_value:['Jami summa','Общая сумма'],
   warehouse_region:['Ombor viloyati','Регион склада'], product:['Mahsulot','Товар'],
   status:['Rasmiy holat','Официальный статус'], delivery_completion:['Yetkazib berish','Поставка'],
@@ -77,6 +78,8 @@ copy.uz.errors.invalid_input = copy.uz.invalid;
 copy.ru.errors.invalid_input = copy.ru.invalid;
 copy.uz.errors.validation_failed = 'So‘rov rejasini tekshirib bo‘lmadi.';
 copy.ru.errors.validation_failed = 'Не удалось проверить план запроса.';
+copy.uz.errors.invalid_response = 'Til xizmati yaroqli so‘rov rejasini qaytarmadi. Savolni aniqroq yozing.';
+copy.ru.errors.invalid_response = 'Языковой сервис вернул некорректный план. Уточните вопрос.';
 Object.assign(labels, {
   average_unit_price:['O‘rtacha birlik narxi','Средняя цена за единицу'],
   seller_inn:['Sotuvchi STIR','ИНН продавца'], buyer_inn:['Xaridor STIR','ИНН покупателя'],
@@ -196,6 +199,7 @@ const nonanswerReasons = {
     "unsupported_unit": "So‘ralgan o‘lchov birligi yoki birliklarni o‘tkazish qoidasi tasdiqlanmagan.",
     "unsupported_date": "Bu sana filtri qo‘llanmaydi. Aniq boshlanish va tugash sanalarini ko‘rsating.",
     "currency": "Qaysi valyuta kerak: USD yoki UZS?",
+    "ambiguous_metric": "Qaysi mezon kerak: bitimlar soni yoki jismoniy hajm?",
     "unit": "Qaysi o‘lchov birligi kerak?"
   },
   "ru": {
@@ -205,6 +209,7 @@ const nonanswerReasons = {
     "unsupported_unit": "Запрошенная единица или правила пересчёта единиц не проверены.",
     "unsupported_date": "Этот фильтр дат не поддерживается. Укажите точные даты начала и окончания.",
     "currency": "Какая валюта нужна: USD или UZS?",
+    "ambiguous_metric": "По какому показателю: количеству сделок или физическому объёму?",
     "unit": "Какая единица измерения нужна?"
   }
 };
